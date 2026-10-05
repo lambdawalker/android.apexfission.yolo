@@ -1,0 +1,3 @@
+[submodule "coordinates"]
+	path = coordinates
+	url = https://github.com/lambdawalker/android.apexfission.math.coordinates.git
