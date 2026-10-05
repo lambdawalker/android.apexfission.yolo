@@ -56,13 +56,6 @@ jobs:
           java-version: |
             17
             21
-      - uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools
-        if: inputs.resume_version == ''
-      - name: Install Android SDK
-        if: inputs.resume_version == ''
-        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
       - uses: gradle/actions/setup-gradle@v4
         if: inputs.resume_version == ''
         with:
@@ -75,8 +68,15 @@ jobs:
         run: |
           python3 -m unittest discover -s scripts/tests -v
           bash -n scripts/finalize-release.sh
-          ./gradlew verifyImportDocs testReleaseUnitTest lintRelease assembleRelease publishAllPublicationsToVerificationRepository "-PreleaseVersion=$RELEASE_VERSION" --no-daemon
+          ./gradlew verifyImportDocs :yolo:testReleaseUnitTest :yolo:lintRelease :yolo:assembleRelease :app:assembleDebug :app:lintDebug :yolo:publishAllPublicationsToVerificationRepository "-PreleaseVersion=$RELEASE_VERSION" --no-daemon
           python3 scripts/release.py check-local --version "$RELEASE_VERSION" --source "$SOURCE_SHA"
+      - name: Upload demo APK
+        if: inputs.resume_version == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: yolo-demo
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
       - name: Check required secrets before reserving a version
         if: inputs.resume_version == ''
         env:
@@ -116,7 +116,7 @@ jobs:
           done
           # The Gradle guard creates a durable upload-started marker before any upload task.
           # Preserve plugin deployment output for Central Portal investigation; no debug logging.
-          ./gradlew publishAndReleaseToMavenCentral "-PreleaseVersion=$RELEASE_VERSION" --no-daemon --console=plain 2>&1 | tee "$RUNNER_TEMP/central-publish.log"
+          ./gradlew :yolo:publishAndReleaseToMavenCentral "-PreleaseVersion=$RELEASE_VERSION" --no-daemon --console=plain 2>&1 | tee "$RUNNER_TEMP/central-publish.log"
       - name: Confirm public signed artifact set and generate installation docs
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}

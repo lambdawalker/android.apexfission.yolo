@@ -41,16 +41,20 @@ only to the presence-check and publication steps.
 ## Verification without publishing
 
 The manual **Verify release tooling (no publication)** workflow also runs on
-pull requests. Neither workflow has a push trigger. Committing this setup does
-not start a release. Use JDK 21 for the daemon, JDK 17 for compilation, Android
-SDK/platform 37, Build Tools 37.0.0, and Python 3.12. Existing AGP 9.4.0, Kotlin
-2.4.20, and Gradle 9.6.0 versions are preserved; publishing uses Vanniktech 0.37.0.
+pull requests and pushes to main. Only verification runs automatically;
+publishing remains manual. Committing this setup does not start a release. Use JDK 21 for the daemon, JDK 17 for compilation, Android
+SDK/platform 37 and Python 3.12. AGP 9.4.1 and the Kotlin Compose compiler 2.2.10
+follow the permissions reference; Gradle remains 9.6.0 and publishing uses
+Vanniktech 0.37.0. AGP supplies the library's built-in Kotlin compiler. Like the
+permissions workflow, CI uses the hosted runner's Android SDK and Gradle setup.
+It does not replace command-line tools or explicitly request SDK packages with
+sdkmanager; Gradle/AGP resolves required SDK components.
 
 ```bash
 python3 -m unittest discover -s scripts/tests -v
 python3 scripts/release.py verify
 bash -n scripts/finalize-release.sh
-./gradlew generateImportDocs verifyImportDocs testReleaseUnitTest lintRelease assembleRelease publishAllPublicationsToVerificationRepository -PreleaseVersion=9.8.7
+./gradlew generateImportDocs verifyImportDocs :yolo:testReleaseUnitTest :yolo:lintRelease :yolo:assembleRelease :app:assembleDebug :app:lintDebug :yolo:publishAllPublicationsToVerificationRepository -PreleaseVersion=9.8.7
 python3 scripts/release.py check-local --version 9.8.7 --source "$(git rev-parse HEAD)"
 ```
 
@@ -76,7 +80,7 @@ of an existing tagged stream stops for provenance reconciliation. Existing Centr
 history without tags can seed the next patch without fabricated historical tags.
 Only an HTTP 404 means absent metadata; network/format errors stop allocation.
 
-After tests, lint, release assembly, and local publication validation, the workflow
+After library tests/lint, release assembly, demo APK build/lint, and local publication validation, the workflow
 checks secret presence and checks that the proposed version has no public artifacts.
 It reserves the version with an annotated **release-pending/X.Y.Z** tag at the
 source commit. Its JSON journal records coordinates, version, source, all artifact
@@ -85,7 +89,7 @@ release jobs. Remote markers also guard against manual/rerun duplication.
 
 Before any Central task can upload, a Gradle guard creates
 **release-uploading/X.Y.Z**. A second upload attempt is rejected. The actual task
-is `publishAndReleaseToMavenCentral -PreleaseVersion=X.Y.Z`, not staging-only
+is `:yolo:publishAndReleaseToMavenCentral -PreleaseVersion=X.Y.Z`, not staging-only
 publication. Development builds use `0.0.0-SNAPSHOT` and do not require secrets;
 Central tasks require a valid stable version, matching reservation, and credentials.
 Use the workflow instead of bypassing its journal with manual generic publish tasks.
@@ -101,7 +105,8 @@ The Git journal survives runner/log loss.
 Only after public confirmation does the helper write `docs/release.json` and
 regenerate `IMPORT.md`. Finalization atomically updates main's generated docs,
 tags the original artifact source as vX.Y.Z, and removes both attempt markers.
-It never force-pushes main or moves stable tags. No GitHub Release or APK is created.
+It never force-pushes main or moves stable tags. No GitHub Release is created. The demo debug APK is uploaded as a workflow artifact
+after validation; only the library is published to Maven Central.
 
 ## Installation documentation
 

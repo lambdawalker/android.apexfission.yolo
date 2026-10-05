@@ -22,7 +22,7 @@ SEMVER = r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
 SUFFIXES = ('.pom', '.aar', '-sources.jar', '-javadoc.jar', '.module')
 DOC_FILES = ('IMPORT.md', 'docs/release.json')
 INSTALL_INPUTS = (*DOC_FILES, 'docs/templates/IMPORT.md.template', 'gradle.properties',
-                  'build.gradle.kts', 'settings.gradle.kts', 'gradle/libs.versions.toml',
+                  'build.gradle.kts', 'yolo/build.gradle.kts', 'app/build.gradle.kts', 'settings.gradle.kts', 'gradle/libs.versions.toml',
                   'scripts', '.github/workflows/publish-yolo.yml')
 
 

@@ -130,6 +130,7 @@ class GitTests(unittest.TestCase):
 
     def advance(self, path):
         self.git('switch', 'main')
+        (self.repo / path).parent.mkdir(parents=True, exist_ok=True)
         (self.repo / path).write_text('concurrent edit\n')
         self.git('add', path)
         self.git('commit', '-m', 'concurrent')
@@ -148,6 +149,13 @@ class GitTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.remote_git('tag', '--list', 'v*'), '')
         self.assertEqual(self.remote_git('show', 'main:IMPORT.md'), self.old_doc.strip())
+
+    def test_concurrent_library_build_change_stops_finalization(self):
+        self.advance('yolo/build.gradle.kts')
+        result = self.finalize()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.remote_git('tag', '--list', 'v*'), '')
+        self.assertEqual(self.remote_git('tag', '--list', 'release-pending/*'), 'release-pending/1.2.3')
 
     def test_existing_wrong_source_tag_stops_recovery(self):
         self.advance('README.md')

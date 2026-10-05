@@ -21,3 +21,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "yolo"
+
+include(":app", ":yolo")
