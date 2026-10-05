@@ -23,7 +23,7 @@ SUFFIXES = ('.pom', '.aar', '-sources.jar', '-javadoc.jar', '.module')
 DOC_FILES = ('IMPORT.md', 'docs/release.json')
 INSTALL_INPUTS = (*DOC_FILES, 'docs/templates/IMPORT.md.template', 'gradle.properties',
                   'build.gradle.kts', 'yolo/build.gradle.kts', 'app/build.gradle.kts', 'settings.gradle.kts', 'gradle/libs.versions.toml',
-                  'scripts', '.github/workflows/publish-yolo.yml')
+                  'scripts', '.github/workflows/publish-yolo.yml', '.github/workflows/finalize-yolo.yml')
 
 
 def version_key(value):
@@ -225,6 +225,35 @@ def prepare(resume='', initial=''):
     return outputs(dict(version=version, source=source, completed=completed))
 
 
+def prepare_finalization(version, source=''):
+    """Re-read remote state under the shared release job lock; never allocate/upload."""
+    version_key(version)
+    if source and not re.fullmatch('[0-9a-f]{40}', source):
+        raise ValueError('Invalid expected source SHA')
+    refresh()
+    current = json.loads(git('show', 'origin/main:docs/release.json'))
+    pending = remote_ref(f'release-pending/{version}')
+    stable = remote_ref(f'v{version}')
+    if not pending and stable and not remote_ref(f'release-uploading/{version}'):
+        tagged_source = git('rev-parse', f'v{version}^{{commit}}')
+        if source and source != tagged_source:
+            raise ValueError('Completed release has conflicting source')
+        if not current or current['phase'] != 'confirmed-public' or version_key(current['version']) < version_key(version):
+            raise ValueError('Stable tag lacks matching or newer confirmed documentation')
+        if not remote_ref(f'v{current["version"]}') or git('rev-parse', f'v{current["version"]}^{{commit}}') != current['source']:
+            raise ValueError('Confirmed documentation has conflicting source')
+        git('merge-base', '--is-ancestor', tagged_source, current['source'])
+        git('merge-base', '--is-ancestor', current['source'], 'origin/main')
+        print(f'Release {version} already finalized; documentation is at {current["version"]}. Nothing to update.')
+        return outputs(dict(version=version, source=tagged_source, skip='true'))
+    if current and version_key(current['version']) >= version_key(version):
+        raise ValueError('Pending release would overwrite same/newer documentation; reconcile markers')
+    selected = prepare(resume=version)
+    if source and source != selected['source']:
+        raise ValueError('Pending release has conflicting source')
+    return outputs(dict(version=version, source=selected['source'], skip='false'))
+
+
 def local_record(version, source):
     version_key(version)
     if git('rev-parse', 'HEAD') != source:
@@ -399,6 +428,9 @@ def main():
     p = sub.add_parser('prepare')
     p.add_argument('--resume', default='')
     p.add_argument('--initial', default='')
+    p = sub.add_parser('prepare-finalization')
+    p.add_argument('--version', required=True)
+    p.add_argument('--source', default='')
     for name in ('check-local', 'reserve', 'guard', 'confirm'):
         p = sub.add_parser(name)
         p.add_argument('--version', required=True)
@@ -412,6 +444,8 @@ def main():
         documentation(args.command == 'verify')
     elif args.command == 'prepare':
         prepare(args.resume, args.initial)
+    elif args.command == 'prepare-finalization':
+        prepare_finalization(args.version, args.source)
     elif args.command == 'check-local':
         print(json.dumps(local_record(args.version, args.source), indent=2))
     elif args.command == 'reserve':

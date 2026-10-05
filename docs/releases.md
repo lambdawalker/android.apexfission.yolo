@@ -31,7 +31,12 @@ Before publishing:
 4. Configure desired environment approvals and main-branch restrictions. Use
    existing repository permissions/rules for bot documentation writes and release
    tags. Do not introduce bypass credentials or weaken protection.
-5. Choose the first stable version; `initial_version` is required when there is
+5. Create **delayed-docs** in this repository and set its **Wait timer to 15 minutes**.
+   Leave required reviewers unset for automatic continuation. If deployment branches
+   are restricted, allow `main`. This environment needs no secrets. Configure the
+   timer before the next publication: referencing an unconfigured environment does
+   not create a timer. Wait timers on Free/Pro/Team are available for public repos.
+6. Choose the first stable version; `initial_version` is required when there is
    no stable history (for example `0.1.0`). No initial release is assumed.
 
 Secrets are checked before reserving a version and again at upload. No values
@@ -95,19 +100,57 @@ publication. Development builds use `0.0.0-SNAPSHOT` and do not require secrets;
 Central tasks require a valid stable version, matching reservation, and credentials.
 Use the workflow instead of bypassing its journal with manual generic publish tasks.
 
-After plugin completion, bounded polling (up to 40 minutes) verifies the complete
+After plugin completion, a separate job waits on the **delayed-docs** environment
+for 15 minutes without occupying a runner or holding the release concurrency lock.
+The next job calls **Finalize YOLO release**, whose bounded polling (up to 40 minutes) verifies the complete
 public artifact set against reserved hashes and checks detached signature files.
 Central validates signatures during deployment; the helper checks public format
 and availability. Partial publication is not success. Plugin output is retained
 as an Actions log artifact for 30 days; find the emitted deployment ID there or
 inspect Central Portal if the runner loses its connection before capturing it.
-The Git journal survives runner/log loss.
+The Git journal survives runner/log loss. This allows roughly **15 + 40 = 55 minutes**
+for propagation after plugin completion, plus runner queue/setup time. Verification
+stops as soon as the complete artifact set is available. The finalization job has a
+50-minute execution timeout to leave room for setup and Git operations. Waiting
+inside the Gradle publishing plugin remains part of the publish job.
 
 Only after public confirmation does the helper write `docs/release.json` and
 regenerate `IMPORT.md`. Finalization atomically updates main's generated docs,
 tags the original artifact source as vX.Y.Z, and removes both attempt markers.
 It never force-pushes main or moves stable tags. No GitHub Release is created. The demo debug APK is uploaded as a workflow artifact
 after validation; only the library is published to Maven Central.
+
+## Manual verification and race prevention
+
+Open **Actions > Finalize YOLO release > Run workflow**, select **main**, and enter
+an existing release version such as `0.1.1` (without a `v` prefix). This starts
+verification without the environment delay. It never builds, allocates a version,
+or uploads artifacts, and needs no Maven/signing secrets or personal access token.
+The workflow declares `contents: write`; existing repository rules must permit the
+same documentation/tag writes used by the original publishing workflow. No additional
+GitHub setting is normally needed beyond the `delayed-docs` environment.
+
+The automatic path uses this same reusable workflow. Publishing and both finalization
+paths share the fixed job-level concurrency group `maven-central-yolo`, with
+`cancel-in-progress: false`. The 15-minute delay is outside the group, so a manual
+request can run during that wait. A manual request waits if an upload or another
+finalization is active. GitHub's default concurrency queue retains one pending job;
+additional requests can replace pending requests, but never cancel an active job.
+Do not repeatedly click Run workflow to create a queue.
+
+After acquiring the lock, the finalizer fetches remote state again. A pending release
+uses its recorded source and hashes. A release already finalized by the other path
+exits successfully without polling or writing anything. An older finalized release
+also exits without overwriting newer documentation, even if the next release has a
+pending marker. Expected source mismatches, inconsistent markers, or conflicting
+tags stop the job. Unknown versions are rejected; this is not a way to create a release.
+
+The existing atomic, non-force Git push remains the final safeguard against concurrent
+main edits or processes outside Actions. A timeout/failure retains the pending markers
+for another manual verification attempt. Starting a new publication while a previous
+release remains pending is still rejected; finalize or reconcile that release first.
+The older `resume_version` input is retained and skips the delay, but the dedicated
+**Finalize YOLO release** action is the preferred recovery entry point.
 
 ## Installation documentation
 
@@ -136,11 +179,12 @@ git ls-remote --refs origin 'refs/tags/release-*'
   retain both markers. Inspect Portal and wait; never blindly re-upload.
 - Partial public artifacts/signatures: retain markers and reconcile the complete
   set with Sonatype. Immutable public artifacts have no automatic rollback.
-- Published but docs/tag push failed: use `resume_version=X.Y.Z`, initial_version
-  empty. Recovery checks out the recorded source, skips builds/reservation/upload,
+- Published but docs/tag push failed: run **Finalize YOLO release** with
+  `version=X.Y.Z`. Recovery checks out the recorded source, skips builds/reservation/upload,
   verifies the original hashes, and retries finalization only.
-- Already finalized current release: repeated recovery verifies it and exits
-  without new commits or uploads. Conflicting stable-tag provenance stops recovery.
+- Already finalized release: repeated finalization checks the remote completion
+  state and exits without polling, new commits, or uploads. Conflicting stable-tag
+  provenance stops recovery.
 
 For a **definitively failed** attempt, establish that no deployment can still
 publish and no artifacts are public. Only then delete the exact failed markers:

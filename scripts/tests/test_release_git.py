@@ -172,3 +172,62 @@ class GitTests(unittest.TestCase):
 
     def test_reservation_records_source_and_hashes(self):
         self.assertEqual(release.read_record('release-pending/1.2.3'), self.record)
+
+    def test_finalization_selects_pending_source_without_allocating(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            result = release.prepare_finalization('1.2.3', self.source)
+        self.assertEqual(result, dict(version='1.2.3', source=self.source, skip='false'))
+        self.assertEqual(self.remote_git('rev-parse', 'main'), self.source)
+
+    def test_delayed_finalization_after_manual_completion_is_noop(self):
+        self.assertEqual(self.finalize().returncode, 0)
+        before = self.remote_git('show-ref')
+        with contextlib.redirect_stdout(io.StringIO()):
+            result = release.prepare_finalization('1.2.3', self.source)
+        self.assertEqual(result['skip'], 'true')
+        self.assertEqual(self.remote_git('show-ref'), before)
+
+    def test_finalization_rejects_conflicting_expected_source(self):
+        with self.assertRaisesRegex(ValueError, 'source'):
+            release.prepare_finalization('1.2.3', 'b' * 40)
+
+    def test_completed_finalization_rejects_conflicting_expected_source(self):
+        self.assertEqual(self.finalize().returncode, 0)
+        with self.assertRaisesRegex(ValueError, 'source'):
+            release.prepare_finalization('1.2.3', 'b' * 40)
+
+    def test_finalization_rejects_unknown_version(self):
+        with self.assertRaises(ValueError):
+            release.prepare_finalization('1.2.4')
+
+    def test_old_finalization_does_not_downgrade_newer_release(self):
+        self.assertEqual(self.finalize().returncode, 0)
+        newer_source = self.git('rev-parse', 'HEAD')
+        newer = dict(self.record, version='1.2.4', source=newer_source, phase='confirmed-public')
+        (self.repo / 'docs/release.json').write_text(json.dumps(newer))
+        release.documentation()
+        self.git('add', '.')
+        self.git('commit', '-m', 'newer confirmed release')
+        self.git('tag', '-a', 'v1.2.4', newer_source, '-m', 'newer release')
+        self.git('push', 'origin', 'HEAD:main', 'refs/tags/v1.2.4')
+        before = self.remote_git('show-ref')
+        with contextlib.redirect_stdout(io.StringIO()):
+            result = release.prepare_finalization('1.2.3', self.source)
+        self.assertEqual(result['skip'], 'true')
+        self.assertEqual(self.remote_git('show-ref'), before)
+
+    def test_completed_release_noop_even_with_next_release_pending(self):
+        self.assertEqual(self.finalize().returncode, 0)
+        newer = dict(self.record, version='1.2.4')
+        self.git('tag', '-a', 'release-pending/1.2.4', self.source, '-m', json.dumps(newer))
+        self.git('push', 'origin', 'refs/tags/release-pending/1.2.4')
+        with contextlib.redirect_stdout(io.StringIO()):
+            result = release.prepare_finalization('1.2.3', self.source)
+        self.assertEqual(result['skip'], 'true')
+        self.assertEqual(self.remote_git('tag', '--list', 'release-pending/*'), 'release-pending/1.2.4')
+
+    def test_concurrent_finalization_workflow_change_stops(self):
+        self.advance('.github/workflows/finalize-yolo.yml')
+        result = self.finalize()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.remote_git('tag', '--list', 'v*'), '')

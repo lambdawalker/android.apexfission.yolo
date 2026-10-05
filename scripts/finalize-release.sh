@@ -24,7 +24,7 @@ git merge-base --is-ancestor "$SOURCE_SHA" origin/main
 git diff --exit-code "$SOURCE_SHA" origin/main -- \
   IMPORT.md docs/release.json docs/templates/IMPORT.md.template gradle.properties \
   build.gradle.kts yolo/build.gradle.kts app/build.gradle.kts settings.gradle.kts gradle/libs.versions.toml scripts \
-  .github/workflows/publish-yolo.yml
+  .github/workflows/publish-yolo.yml .github/workflows/finalize-yolo.yml
 pending="release-pending/$RELEASE_VERSION"
 uploading="release-uploading/$RELEASE_VERSION"
 [[ "$(git rev-parse "$pending^{commit}")" == "$SOURCE_SHA" ]]

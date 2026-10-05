@@ -17,16 +17,19 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: maven-central-yolo
-  cancel-in-progress: false
-
 jobs:
   publish:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 100
     environment: maven-central
+    # Share the mutation lock with automatic/manual finalization, never with the delay.
+    concurrency:
+      group: maven-central-yolo
+      cancel-in-progress: false
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      source: ${{ steps.release.outputs.source }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -117,20 +120,6 @@ jobs:
           # The Gradle guard creates a durable upload-started marker before any upload task.
           # Preserve plugin deployment output for Central Portal investigation; no debug logging.
           ./gradlew :yolo:publishAndReleaseToMavenCentral "-PreleaseVersion=$RELEASE_VERSION" --no-daemon --console=plain 2>&1 | tee "$RUNNER_TEMP/central-publish.log"
-      - name: Confirm public signed artifact set and generate installation docs
-        env:
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
-          COMPLETED: ${{ steps.release.outputs.completed }}
-        run: |
-          args=()
-          if [[ "$COMPLETED" == true ]]; then args+=(--completed); fi
-          python3 scripts/release.py confirm --version "$RELEASE_VERSION" --timeout 2400 "${args[@]}"
-      - name: Atomically finalize docs, source tag, and attempt markers
-        if: steps.release.outputs.completed != 'true'
-        env:
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
-          SOURCE_SHA: ${{ steps.release.outputs.source }}
-        run: bash scripts/finalize-release.sh
       - name: Retain deployment log
         if: always() && inputs.resume_version == ''
         uses: actions/upload-artifact@v4
@@ -143,5 +132,30 @@ jobs:
         if: failure()
         run: |
           echo 'Keep pending/uploading tags until the Central Portal outcome is known.'
-          echo 'Use resume_version to verify/finalize only; it never re-uploads.'
+          echo 'Run Finalize YOLO release manually with the reserved version; it never re-uploads.'
           echo 'See docs/releases.md for rejected, unknown, partial, or protected-branch outcomes.'
+
+  propagation-delay:
+    name: Wait for Maven Central propagation (15 minutes)
+    needs: publish
+    if: inputs.resume_version == ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    # Configure the 15-minute wait timer in repository Settings > Environments.
+    # No runner is held during the environment wait, and no release lock is held.
+    environment: delayed-docs
+    steps:
+      - run: echo 'Environment delay complete; ready to verify Maven Central.'
+
+  finalize:
+    name: Verify public artifacts and finalize release
+    needs: [publish, propagation-delay]
+    if: >-
+      ${{ !cancelled() && needs.publish.result == 'success' &&
+          (needs.propagation-delay.result == 'success' ||
+           needs.propagation-delay.result == 'skipped') }}
+    uses: ./.github/workflows/finalize-yolo.yml
+    with:
+      version: ${{ needs.publish.outputs.version }}
+      source: ${{ needs.publish.outputs.source }}

@@ -1,0 +1,69 @@
+name: Finalize YOLO release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Existing release X.Y.Z to verify and finalize. Never uploads artifacts.'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      source:
+        description: 'Expected immutable source from the publishing job.'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    # Same repository-wide lock as publishing. Never cancel an active upload/push.
+    # The automatic environment delay is a separate job outside this lock.
+    concurrency:
+      group: maven-central-yolo
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Recheck remote release state after acquiring the lock
+        id: release
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          EXPECTED_SOURCE: ${{ inputs.source }}
+        run: python3 scripts/release.py prepare-finalization --version "$RELEASE_VERSION" --source "$EXPECTED_SOURCE"
+      - name: Check out immutable artifact source
+        if: steps.release.outputs.skip != 'true'
+        env:
+          SOURCE_SHA: ${{ steps.release.outputs.source }}
+        run: git checkout --detach "$SOURCE_SHA"
+      - name: Confirm complete public artifact set (up to 40 minutes)
+        if: steps.release.outputs.skip != 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: python3 scripts/release.py confirm --version "$RELEASE_VERSION" --timeout 2400
+      - name: Atomically finalize docs, source tag, and attempt markers
+        if: steps.release.outputs.skip != 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          SOURCE_SHA: ${{ steps.release.outputs.source }}
+        run: bash scripts/finalize-release.sh
+      - name: Recovery guidance
+        if: failure()
+        run: |
+          echo 'Keep pending/uploading tags and inspect the original publish log and Central Portal.'
+          echo 'Run this workflow again with the same version to verify/finalize without uploading.'
+          echo 'See docs/releases.md for partial publication or protected-branch outcomes.'
