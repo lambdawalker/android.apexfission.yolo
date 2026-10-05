@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: ubuntu-24.04
@@ -32,7 +36,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Verify Gradle build and local publication without credentials
         run: |
-          ./gradlew generateImportDocs verifyImportDocs :yolo:testReleaseUnitTest :yolo:lintRelease :yolo:assembleRelease :app:assembleDebug :app:lintDebug :yolo:publishAllPublicationsToVerificationRepository -PreleaseVersion=9.8.7 --no-daemon
+          ./gradlew generateImportDocs verifyImportDocs :yolo:testDebugUnitTest :yolo:lintRelease :yolo:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug :yolo:publishAllPublicationsToVerificationRepository -PreleaseVersion=9.8.7 --no-daemon
           git diff --exit-code -- IMPORT.md docs/release.json
           python3 scripts/release.py check-local --version 9.8.7 --source "$(git rev-parse HEAD)"
       - name: Upload demo APK

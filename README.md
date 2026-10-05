@@ -41,7 +41,7 @@ Requires JDK 21 for the Gradle daemon, JDK 17 for compilation, Android SDK 37, a
 Python 3.12 for release helper checks. No Git submodules are required.
 
 ```bash
-./gradlew :yolo:testReleaseUnitTest :yolo:lintRelease :app:assembleDebug :app:lintDebug
+./gradlew :yolo:testDebugUnitTest :yolo:lintRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
 ./gradlew :yolo:assembleRelease
 python3 -m unittest discover -s scripts/tests -v
 ```

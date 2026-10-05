@@ -54,7 +54,7 @@ sdkmanager; Gradle/AGP resolves required SDK components.
 python3 -m unittest discover -s scripts/tests -v
 python3 scripts/release.py verify
 bash -n scripts/finalize-release.sh
-./gradlew generateImportDocs verifyImportDocs :yolo:testReleaseUnitTest :yolo:lintRelease :yolo:assembleRelease :app:assembleDebug :app:lintDebug :yolo:publishAllPublicationsToVerificationRepository -PreleaseVersion=9.8.7
+./gradlew generateImportDocs verifyImportDocs :yolo:testDebugUnitTest :yolo:lintRelease :yolo:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug :yolo:publishAllPublicationsToVerificationRepository -PreleaseVersion=9.8.7
 python3 scripts/release.py check-local --version 9.8.7 --source "$(git rev-parse HEAD)"
 ```
 

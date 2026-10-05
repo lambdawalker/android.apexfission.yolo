@@ -68,7 +68,7 @@ jobs:
         run: |
           python3 -m unittest discover -s scripts/tests -v
           bash -n scripts/finalize-release.sh
-          ./gradlew verifyImportDocs :yolo:testReleaseUnitTest :yolo:lintRelease :yolo:assembleRelease :app:assembleDebug :app:lintDebug :yolo:publishAllPublicationsToVerificationRepository "-PreleaseVersion=$RELEASE_VERSION" --no-daemon
+          ./gradlew verifyImportDocs :yolo:testDebugUnitTest :yolo:lintRelease :yolo:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug :yolo:publishAllPublicationsToVerificationRepository "-PreleaseVersion=$RELEASE_VERSION" --no-daemon
           python3 scripts/release.py check-local --version "$RELEASE_VERSION" --source "$SOURCE_SHA"
       - name: Upload demo APK
         if: inputs.resume_version == ''
