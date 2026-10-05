@@ -12,8 +12,8 @@ reference for humans and AI agents. Read it instead of guessing a version.
 {{INSTALLATION}}
 
 Add both `google()` and `mavenCentral()` to your Gradle settings repositories.
-This is an Android AAR requiring minSdk 28, with JVM 17 bytecode. It uses AGP built-in
-Kotlin; use a compatible Kotlin compiler. Maven consumers need
+This is an Android AAR requiring minSdk 28, with JVM 17 bytecode. It is built
+with Kotlin 2.4.20; use a compatible Kotlin compiler. Maven consumers need
 Android AAR support; Gradle with the Android plugin is the supported build path.
 
 The published Apexfission Coordinates library is exposed transitively through

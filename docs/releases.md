@@ -43,9 +43,10 @@ only to the presence-check and publication steps.
 The manual **Verify release tooling (no publication)** workflow also runs on
 pull requests and pushes to main. Only verification runs automatically;
 publishing remains manual. Committing this setup does not start a release. Use JDK 21 for the daemon, JDK 17 for compilation, Android
-SDK/platform 37 and Python 3.12. AGP 9.4.1 and the Kotlin Compose compiler 2.2.10
-follow the permissions reference; Gradle remains 9.6.0 and publishing uses
-Vanniktech 0.37.0. AGP supplies the library's built-in Kotlin compiler. Like the
+SDK/platform 37 and Python 3.12. AGP 9.4.1 follows the permissions reference; Gradle remains 9.6.0 and
+publishing uses Vanniktech 0.37.0. Both Kotlin Gradle and Compose compiler plugins
+are explicitly 2.4.20 to read the published coordinates library metadata. AGP
+built-in Kotlin remains enabled; the root buildscript upgrades its compiler. Like the
 permissions workflow, CI uses the hosted runner's Android SDK and Gradle setup.
 It does not replace command-line tools or explicitly request SDK packages with
 sdkmanager; Gradle/AGP resolves required SDK components.
