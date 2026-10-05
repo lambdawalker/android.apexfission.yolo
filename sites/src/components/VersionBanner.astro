@@ -1,0 +1,12 @@
+---
+import build from '../build.json';
+---
+<aside aria-label="Documentation version" class="version-banner">
+  Main development docs · build {build.ref.slice(0, 12)} ·
+  <a href="/android.apexfission.yolo/installation/">Confirmed release: {build.version}</a> ·
+  <a href="/android.apexfission.yolo/agents/index.md">Raw AI guides</a>
+</aside>
+<style>
+.version-banner {padding:.65rem 1rem;background:var(--sl-color-gray-6);font-size:.875rem;border-bottom:1px solid var(--sl-color-gray-5)}
+a {color:var(--sl-color-text-accent);text-decoration:underline}
+</style>

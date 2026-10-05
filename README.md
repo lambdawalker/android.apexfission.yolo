@@ -3,20 +3,23 @@
 Android YOLO detection with LiteRT/TensorFlow Lite inference, image letterboxing,
 tensor validation, and NMS/IoU post-processing.
 
+## Documentation
+
+- **[Human documentation website](https://lambdawalker.github.io/android.apexfission.yolo/)** — installation, integration, model contract, API reference, and troubleshooting. Deployment requires GitHub Pages to use Actions.
+- **[AI integration entry](AI_INTEGRATION_GUIDE.md)** — small retrieval map and dedicated Markdown contracts.
+- **[IMPORT.md](IMPORT.md)** — generated, confirmed published coordinates; never infer a version from main.
+- **[Runnable demo](app/README.md)** — photo inference and deterministic post-processing.
+- **[Maintenance](docs/maintenance.md)** and **[coverage](docs/coverage.md)** — validation commands and evidence.
+
+The website and agent guides describe main development source; installation facts identify the
+confirmed release separately. The public packages remain `com.apexfission.android.yolo`.
+The published coordinates dependency is transitive; no sibling checkout is required.
+
 ## Project structure
 
-Like [Apexfission Permissions](https://github.com/lambdawalker/android.apexfission.permissions),
-this project separates its publishable library from its runnable demo:
-
-- **[yolo/](yolo/)** — Android library. Packages remain `com.apexfission.android.yolo`.
-- **[app/](app/)** — Compose demo consuming `implementation(project(":yolo"))`.
-- **[IMPORT.md](IMPORT.md)** — authoritative Maven coordinates and confirmed release.
-- **[docs/releases.md](docs/releases.md)** — publishing and recovery instructions.
-
-The intended publication is `com.apexfission.android:yolo`. No release is claimed
-until public confirmation. The library exports
-`com.apexfission.android.math:coordinates:0.1.0` through its public API; consumers
-receive the geometry classes transitively. Its pin lives in root `gradle.properties`.
+`yolo/` is the published library; `app/` is the runnable Compose demo. `docs/agents/` holds
+canonical integration guides, `sites/` builds the human website and raw Markdown,
+and `scripts/` maintains confirmed release metadata. Contributor instructions are in `AGENTS.md`.
 
 ## Run the demo
 

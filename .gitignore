@@ -58,3 +58,13 @@ google-services.json
 
 __pycache__/
 *.pyc
+
+# Generated documentation outputs
+sites/node_modules/
+sites/dist/
+sites/.astro/
+sites/public/
+sites/src/build.json
+sites/src/content/docs/generated/
+sites/src/content/docs/*
+!sites/src/content/docs/index.md

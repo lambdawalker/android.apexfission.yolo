@@ -1,0 +1,5 @@
+:root { --sl-color-accent-low:#102e36; --sl-color-accent:#087e8b; --sl-color-accent-high:#b5edf1; --sl-content-width:52rem; }
+:root[data-theme='light'] { --sl-color-accent-low:#def4f4; --sl-color-accent:#006973; --sl-color-accent-high:#12424a; }
+.sl-markdown-content table { display:block; overflow-x:auto; }
+.sl-markdown-content pre { border:1px solid var(--sl-color-gray-5); }
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important;animation:none!important;transition:none!important; } }
