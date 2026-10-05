@@ -1,0 +1,27 @@
+{
+  "name": "apexfission-yolo-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync": "node scripts/sync.mjs",
+    "dev": "npm run sync && astro dev",
+    "build": "npm run sync && astro build && node scripts/validate-docs.mjs",
+    "preview": "astro preview",
+    "test": "node --test scripts/tests/*.test.mjs",
+    "check": "npm test && npm run build"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.42.4",
+    "astro": "7.3.5"
+  },
+  "devDependencies": {
+    "github-slugger": "2.0.0",
+    "parse5": "8.0.1",
+    "remark-gfm": "4.0.1",
+    "remark-parse": "11.0.0",
+    "remark-stringify": "11.0.0",
+    "sharp": "0.35.5",
+    "unified": "11.0.5",
+    "unist-util-visit": "5.1.0"
+  }
+}

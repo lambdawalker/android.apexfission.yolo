@@ -1,0 +1,107 @@
+[
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/engine/Detector.kt",
+    "sha256": "cd72286548131119715d63608c555873f6587216fae369d8415f47e600d52654",
+    "guide": "docs/agents/api/detector.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/engine/build.kt",
+    "sha256": "0281fb5f49ce4c8fa7c8a63f3cf1f392a34d94252fdee29397b9a33da2fb5fec",
+    "guide": "docs/agents/api/detector.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/engine/YoloDetector.kt",
+    "sha256": "78543088abc22dc403205a96e4ccbe3e74d6b6e38fd234cf754751a635742cf3",
+    "guide": "docs/agents/api/detector.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/engine/ThreadConfinedYoloDetector.kt",
+    "sha256": "504b9c1a6a7162554d09f25eb47133614f06c8105c7e45da86f7339af8a5841f",
+    "guide": "docs/agents/api/detector.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/engine/Detection.kt",
+    "sha256": "cc90a6b514a29e181b119d38d5a6ff856fff75e67fa3c05ef7d9ba0addd76464",
+    "guide": "docs/agents/api/detector.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/engine/LetterboxResult.kt",
+    "sha256": "6fe5c6118808dab19772e5e1aa76e8f00859798d515ec190bee275626ac4d839",
+    "guide": "docs/agents/api/detector.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/engine/NumThreads.kt",
+    "sha256": "6861ebd44c3b54f62eec88cd3e927f6f4e06b4f976d1ec1f3b6adaed4006a1e6",
+    "guide": "docs/agents/api/detector.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/tflite/engine/InferenceEngine.kt",
+    "sha256": "b08ff394dd26bedeefe88c46dfbf2560b7bdb9bb6fd7af8aa582bffd7154bbbf",
+    "guide": "docs/agents/api/inference.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/tflite/engine/build.kt",
+    "sha256": "ebbdc1bf0932cfe33722e55d2a62eea9b50af3d5c09349f46fa0cd8da75ebb97",
+    "guide": "docs/agents/api/inference.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/tflite/engine/ThreadConfinedInferenceEngine.kt",
+    "sha256": "67473622e6d00be1d775a4d223f17613aa2be3b18ddd2db2d46baf52401649fe",
+    "guide": "docs/agents/api/inference.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/tflite/engine/EngineThreadDispatcher.kt",
+    "sha256": "e044f4c713e6768bcd244f40a9d265d00ab242c878209487326331ae91d92098",
+    "guide": "docs/agents/api/inference.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/tflite/engine/ThreadConfinedResource.kt",
+    "sha256": "fe5076f173faa3d5a63efdc40d0498cf81c1eabe32ced6e5d3769cdcbc98b080",
+    "guide": "docs/agents/api/inference.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/postprocess/YoloPostProcessor.kt",
+    "sha256": "76a2ea0575efaf9a3436bf73f00f536e6616afc2e8b4212531e1903330097e4b",
+    "guide": "docs/agents/api/postprocess.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/postprocess/intersectionOverUnion.kt",
+    "sha256": "f3609b9b773a6ef4171b76371bd8874043bfccc65493167fe112a8415f6eb918",
+    "guide": "docs/agents/api/postprocess.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/image/PreProcessingImageTransformation.kt",
+    "sha256": "70219ed207bfd15a8754805f4d50e2638a72e1817c395e51de7fa1316aa52d79",
+    "guide": "docs/agents/api/image.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/image/ImageOperations.kt",
+    "sha256": "00c9207f7a4c5f156728402d169c72d1bcd850f325bf58456695ce69a87d87d3",
+    "guide": "docs/agents/api/image.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/image/ImageProxyExt.kt",
+    "sha256": "9b67375362d88bec52770786575fe38b33d0a76131e5f2297f79ab40c5b03fe8",
+    "guide": "docs/agents/api/image.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/tflite/validation/TensorContractValidator.kt",
+    "sha256": "3e590612feeca8bdea15d352bd4d847d3b5e83608f39ac67d87d9055e380f376",
+    "guide": "docs/agents/api/buffers-validation.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/tflite/buffers/InputTensorBuffers.kt",
+    "sha256": "bd1793f69b531410aebea6dd28391c90153fc8e48e6fad7e9f1235210e0324cd",
+    "guide": "docs/agents/api/buffers-validation.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/tflite/buffers/OutputTensorBuffers.kt",
+    "sha256": "87869a2cfdeb5a5d41cc2f20a08ad0702c518b55c7fa0c8d4c24704af3b33504",
+    "guide": "docs/agents/api/buffers-validation.md"
+  },
+  {
+    "path": "yolo/src/main/java/com/apexfission/android/yolo/tflite/buffers/BitmapTensorConverter.kt",
+    "sha256": "4e7888057ed7a4d253dc7a9239dfd93dae3c2313314bdf5098c36fe0bea4719d",
+    "guide": "docs/agents/api/buffers-validation.md"
+  }
+]
