@@ -1,0 +1,38 @@
+name: Verify release tooling (no publication)
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test release policy and deterministic documentation
+        run: |
+          python3 -m unittest discover -s scripts/tests -v
+          python3 scripts/release.py verify
+          bash -n scripts/finalize-release.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify Gradle build and local publication without credentials
+        run: |
+          ./gradlew generateImportDocs verifyImportDocs testReleaseUnitTest lintRelease assembleRelease publishAllPublicationsToVerificationRepository -PreleaseVersion=9.8.7 --no-daemon
+          git diff --exit-code -- IMPORT.md docs/release.json
+          python3 scripts/release.py check-local --version 9.8.7 --source "$(git rev-parse HEAD)"

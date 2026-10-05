@@ -1,0 +1,145 @@
+name: Publish YOLO library
+
+on:
+  workflow_dispatch:
+    inputs:
+      initial_version:
+        description: 'First release only: explicit stable X.Y.Z (for example 0.1.0). Leave empty afterwards.'
+        required: false
+        default: ''
+        type: string
+      resume_version:
+        description: 'Recovery only: verify existing publication and finalize; NEVER uploads again.'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: maven-central-yolo
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    environment: maven-central
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Configure release identity
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      - name: Allocate next version or recover original source
+        id: release
+        env:
+          INITIAL_VERSION: ${{ inputs.initial_version }}
+          RESUME_VERSION: ${{ inputs.resume_version }}
+        run: python3 scripts/release.py prepare --initial "$INITIAL_VERSION" --resume "$RESUME_VERSION"
+      - name: Check out immutable artifact source
+        env:
+          SOURCE_SHA: ${{ steps.release.outputs.source }}
+        run: git checkout --detach "$SOURCE_SHA"
+      - uses: actions/setup-java@v4
+        if: inputs.resume_version == ''
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+      - uses: android-actions/setup-android@v3
+        if: inputs.resume_version == ''
+      - name: Install Android SDK
+        if: inputs.resume_version == ''
+        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        if: inputs.resume_version == ''
+        with:
+          cache-disabled: true
+      - name: Test and validate complete unsigned publication locally
+        if: inputs.resume_version == ''
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          SOURCE_SHA: ${{ steps.release.outputs.source }}
+        run: |
+          python3 -m unittest discover -s scripts/tests -v
+          bash -n scripts/finalize-release.sh
+          ./gradlew verifyImportDocs testReleaseUnitTest lintRelease assembleRelease publishAllPublicationsToVerificationRepository "-PreleaseVersion=$RELEASE_VERSION" --no-daemon
+          python3 scripts/release.py check-local --version "$RELEASE_VERSION" --source "$SOURCE_SHA"
+      - name: Check required secrets before reserving a version
+        if: inputs.resume_version == ''
+        env:
+          CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          SIGNING_KEY: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
+        run: |
+          for name in CENTRAL_USERNAME CENTRAL_PASSWORD SIGNING_KEY; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing required secret for $name; no release reservation created." >&2
+              exit 1
+            fi
+          done
+      - name: Reserve immutable version, source, and artifact hashes
+        if: inputs.resume_version == ''
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          SOURCE_SHA: ${{ steps.release.outputs.source }}
+        run: python3 scripts/release.py reserve --version "$RELEASE_VERSION" --source "$SOURCE_SHA"
+      - name: Publish and release signed artifacts
+        if: inputs.resume_version == ''
+        timeout-minutes: 35
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_IN_MEMORY_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in ORG_GRADLE_PROJECT_mavenCentralUsername ORG_GRADLE_PROJECT_mavenCentralPassword ORG_GRADLE_PROJECT_signingInMemoryKey; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing release credential: $name" >&2
+              exit 1
+            fi
+          done
+          # The Gradle guard creates a durable upload-started marker before any upload task.
+          # Preserve plugin deployment output for Central Portal investigation; no debug logging.
+          ./gradlew publishAndReleaseToMavenCentral "-PreleaseVersion=$RELEASE_VERSION" --no-daemon --console=plain 2>&1 | tee "$RUNNER_TEMP/central-publish.log"
+      - name: Confirm public signed artifact set and generate installation docs
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          COMPLETED: ${{ steps.release.outputs.completed }}
+        run: |
+          args=()
+          if [[ "$COMPLETED" == true ]]; then args+=(--completed); fi
+          python3 scripts/release.py confirm --version "$RELEASE_VERSION" --timeout 2400 "${args[@]}"
+      - name: Atomically finalize docs, source tag, and attempt markers
+        if: steps.release.outputs.completed != 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          SOURCE_SHA: ${{ steps.release.outputs.source }}
+        run: bash scripts/finalize-release.sh
+      - name: Retain deployment log
+        if: always() && inputs.resume_version == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: central-publish-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/central-publish.log
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Recovery guidance
+        if: failure()
+        run: |
+          echo 'Keep pending/uploading tags until the Central Portal outcome is known.'
+          echo 'Use resume_version to verify/finalize only; it never re-uploads.'
+          echo 'See docs/releases.md for rejected, unknown, partial, or protected-branch outcomes.'
