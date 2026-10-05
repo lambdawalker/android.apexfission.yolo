@@ -28,10 +28,9 @@ and the compiled helper. Calls block even though native work is thread-confined.
 | Give an AI agent the facts | [Raw Markdown](/android.apexfission.yolo/agents/index.md) |
 
 ## Know the boundaries
-This library does not ship a trained model, camera screen, permissions flow, tracking, OCR,
-or identity verification. Android API 28+ is required. It supports a specific YOLO tensor
-layout; an export named “YOLO” is not automatically compatible. GPU use is a request.
-See [limitations](/android.apexfission.yolo/limitations/) before adopting it.
+This library does not ship a trained model, camera screen, permissions flow. Android API 28+ 
+is required. It supports a specific YOLO tensor layout; an export named “YOLO” is not automatically
+compatible. GPU use is a request. See [limitations](/android.apexfission.yolo/limitations/) before adopting it.
 
 ## Documentation scope
 This site describes **main development source** at the build commit displayed above.

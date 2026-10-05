@@ -5,7 +5,7 @@ Library API source at the initial documentation review matches that confirmed so
 future main changes are not automatically available in the published package.
 
 Android on-device YOLO inference, preprocessing, tensor validation, and class-aware
-NMS. No model in the AAR; no camera UI, permission flow, tracker, OCR, or identity verification.
+NMS. No model in the AAR; no camera UI, permission flow, tracker.
 
 | Task | API / next document |
 | --- | --- |

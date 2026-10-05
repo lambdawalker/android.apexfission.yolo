@@ -2,7 +2,7 @@
 - Android API 28+ only; no JVM desktop, iOS, JavaScript, or server runtime contract.
 - No trained model or labels in the library AAR. Bundled demo weights are separate assets.
 - Only the [tensor contract](model-contract.md) is supported; not every YOLO export is compatible.
-- No camera screen, permission manager, tracker, OCR, passkey, or identity/authenticity verification.
+- No camera screen, permission manager.
 - No automatic lifecycle binding, asynchronous cancellation, coroutine adapter, or preview transform.
 - GPU acceleration is conditional and has no reported active-backend flag or guaranteed fallback
   after interpreter initialization failure.

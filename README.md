@@ -63,7 +63,7 @@ compatible plugin/catalog and publication properties in the host build. Opening
 this standalone repository is the supported development setup.
 
 The library supplies inference and image processing, not camera screens,
-permission handling, tracking UI, or OCR. Supply model assets and labels in your
+permission handling, tracking UI. Supply model assets and labels in your
 application. Close detectors and engines after use; see the runnable
 [demo](app/src/main/java/com/apexfission/android/yolo/demo/MainActivity.kt) and
 [package guides](yolo/src/main/java/com/apexfission/android/yolo/engine/README.md).
