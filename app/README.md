@@ -25,8 +25,8 @@ the activity and released by Android garbage collection when no longer reference
 - SHA-256: `473f497ca45b4ab2f66ef59b3da1c0e27a0ac11227279ba6d89a19566c450e1e`
 - Labels: copied from that commit's `tfmodel/.../add.kt` catalog.
 
-`:app:prepareDemoModel` downloads and verifies the pinned model into
-`app/build/generated/demoAssets/demo.tflite`. It runs before app builds, requires
+The variant-specific task (for example `:app:prepareDebugDemoModel`) downloads
+and verifies the pinned model into the variant's generated assets directory. It runs before app builds, requires
 network access the first time (and after clean), and fails if download or checksum
 verification fails. Gradle tracks the generated output for incremental builds.
 The asset is stored uncompressed so the library can memory-map it. No binary
