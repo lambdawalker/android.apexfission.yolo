@@ -10,6 +10,7 @@
 
 ## Commands
 ```bash
+python3 -m pip install -r scripts/requirements-publishing.txt
 python3 scripts/release.py generate
 python3 scripts/release.py verify
 python3 -m unittest discover -s scripts/tests -v
@@ -32,8 +33,8 @@ A new public file must be assigned a guide in that manifest (internal-only files
 To check stale-output removal, create a temporary file under `sites/public/agents/`, rerun
 `npm run sync`, and confirm it is removed. Keep source guides outside that generated directory.
 `DOCS_REF` defaults to the checked-out commit; CI supplies the exact checkout SHA. Source links
-are pinned to it. The site remains visibly main development docs even if installation metadata
-points to an older release.
+are pinned to it. Legacy URLs remain visibly main development docs even if installation metadata
+points to an older release. Versioned URLs identify their release source and documentation revision.
 
 ## Android checks
 ```bash
@@ -60,6 +61,39 @@ behavior are preserved.
 
 For release preflight, run documentation and Android checks against the exact selected release
 SHA. Reuse CI evidence only for that SHA and matching inputs. No screenshot evidence is claimed.
-The documentation workflow does not add a new mandatory gate to the existing package publisher;
-maintainers must check its result before publishing. Follow the [release runbook](releases.md)
+Both publication destinations validate the documentation at the selected immutable source
+before reserving or publishing a new release. The separate documentation workflow also validates
+pull requests and rebuilds the site after confirmed publication. Follow the [release runbook](releases.md)
 for publication and recovery. Never advance installation values from a proposed version.
+
+
+## Versioned guides and Spanish
+The catalogs at `/en/` and `/es/` list confirmed releases and explicit development docs.
+Each `/en/yolo/<version>/` or `/es/yolo/<version>/` route has matching `raw/*.md` guides.
+Language and version selectors preserve the guide when available; otherwise the target index
+explains the fallback. Legacy human and agent URLs remain supported as development aliases.
+
+`docs/releases/history/yolo/<version>.json` owns immutable release provenance and destination
+facts. `scripts/documentation_history.py export` supplies exact installation text to the site;
+old pages never read current installation pointers. Builders require full Git history, read
+historical Markdown as data, and execute only current reviewed build tooling. Release 0.1.0
+predates the guides: its recorded documentation correction uses the later documentation commit,
+whose `yolo/src` tree was reviewed as identical to the release. Example commands use that later
+checkout; source links distinguish library provenance from demo/documentation provenance.
+
+`docs/es/` mirrors relative paths under `docs/agents/`. `docs/es/translations.json` maps each
+translated path to the SHA-256 of the exact English input bytes. Missing or stale translations
+show the English guide from the same release with a visible notice. Preserve code fences and
+heading structure; the builder preserves English anchor aliases. Historical translations are
+read only from their recorded documentation revision or retained translation tree, never from
+the current working translation. Add a translation correction explicitly through archive tooling.
+
+Run `npm run check` after editing guides, translations, navigation, or archive behavior. It retains
+the reviewed API hashes and compiled-snippet checks, tests immutable history and translation
+fallback, then validates HTML, raw Markdown, selector option destinations, and anchors. Generated
+scoped pages, `src/versions.json`, `public/`, and `dist/` must not be committed.
+
+Successful trusted release workflow completions build current main with full history, covering
+publication and manual recovery even when a token-generated archive commit emits no push event.
+Only main-branch runs from this repository qualify; historical or fork workflow artifacts are
+never downloaded or executed. Documentation retries never upload packages.

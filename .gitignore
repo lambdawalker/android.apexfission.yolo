@@ -84,3 +84,5 @@ sites/src/content/docs/*
 /captures
 .externalNativeBuild
 .cxx
+
+sites/src/versions.json

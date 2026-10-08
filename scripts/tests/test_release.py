@@ -44,7 +44,7 @@ def aar(bytecode=61):
 def artifacts():
     return {'.pom': pom(), '.aar': aar(),
             '-sources.jar': jar('Detection.kt', 'class Detection'), '-javadoc.jar': jar('README.md', 'YOLO'),
-            '.module': json.dumps({'component': {'group': 'org.example', 'module': 'yolo', 'version': '1.2.3'}}).encode()}
+            '.module': json.dumps({'component': {'group': 'org.example', 'module': 'yolo', 'version': '1.2.3'}, 'variants': [{'name': 'releaseApiElements', 'attributes': {'org.gradle.usage': 'java-api'}, 'dependencies': [{'group': 'com.apexfission.android.math', 'module': 'coordinates', 'version': {'requires': '0.1.0'}}]}]}).encode()}
 
 
 def record():

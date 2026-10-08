@@ -3,12 +3,32 @@ name: Finalize YOLO release
 on:
   workflow_dispatch:
     inputs:
+      repository:
+        description: 'Destination repository (uses its matching GitHub environment)'
+        type: choice
+        required: true
+        default: maven-central
+        # BEGIN GENERATED REPOSITORIES
+        options: ["maven-central", "jitpack"]
+        # END GENERATED REPOSITORIES
+      module:
+        description: 'Module whose existing publication should be finalized'
+        type: choice
+        required: true
+        options: [yolo]
       version:
         description: 'Existing release X.Y.Z to verify and finalize. Never uploads artifacts.'
         required: true
         type: string
   workflow_call:
     inputs:
+      repository:
+        type: string
+        required: false
+        default: maven-central
+      module:
+        required: true
+        type: string
       version:
         required: true
         type: string
@@ -22,10 +42,41 @@ permissions:
   contents: write
 
 jobs:
+  configuration:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      environment: ${{ steps.repository.outputs.environment }}
+      publisher: ${{ steps.repository.outputs.publisher }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install -r scripts/requirements-publishing.txt
+      - run: python3 scripts/publishing_config.py check
+      - id: repository
+        env:
+          RELEASE_REPOSITORY: ${{ inputs.repository }}
+        run: python3 scripts/publishing_config.py resolve
+
   finalize:
+    needs: configuration
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 50
+    environment: ${{ needs.configuration.outputs.environment }}
+    env:
+      RELEASE_REPOSITORY: ${{ inputs.repository }}
+      MAVEN_REPOSITORY_URL: ${{ vars.MAVEN_REPOSITORY_URL || 'https://repo.maven.apache.org/maven2' }}
+      MAVEN_REPOSITORY_USERNAME: ${{ secrets.MAVEN_REPOSITORY_USERNAME }}
+      MAVEN_REPOSITORY_PASSWORD: ${{ secrets.MAVEN_REPOSITORY_PASSWORD }}
+      GIT_LFS_SKIP_SMUDGE: '1'
+      RELEASE_MODULE: ${{ inputs.module }}
     # Same repository-wide lock as publishing. Never cancel an active upload/push.
     # The automatic environment delay is a separate job outside this lock.
     concurrency:
@@ -36,34 +87,31 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          lfs: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - run: python3 -m pip install -r scripts/requirements-publishing.txt
       - name: Recheck remote release state after acquiring the lock
         id: release
         env:
           RELEASE_VERSION: ${{ inputs.version }}
           EXPECTED_SOURCE: ${{ inputs.source }}
-        run: python3 scripts/release.py prepare-finalization --version "$RELEASE_VERSION" --source "$EXPECTED_SOURCE"
-      - name: Check out immutable artifact source
-        if: steps.release.outputs.skip != 'true'
-        env:
-          SOURCE_SHA: ${{ steps.release.outputs.source }}
-        run: git checkout --detach "$SOURCE_SHA"
+        run: python3 scripts/module_release.py prepare-finalization --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$EXPECTED_SOURCE"
       - name: Confirm complete public artifact set (up to 40 minutes)
         if: steps.release.outputs.skip != 'true'
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
-        run: python3 scripts/release.py confirm --version "$RELEASE_VERSION" --timeout 2400
+        run: python3 scripts/module_release.py confirm --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --timeout 2400
       - name: Atomically finalize docs, source tag, and attempt markers
         if: steps.release.outputs.skip != 'true'
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           SOURCE_SHA: ${{ steps.release.outputs.source }}
-        run: bash scripts/finalize-release.sh
+        run: python3 scripts/module_release.py finalize --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$SOURCE_SHA"
       - name: Recovery guidance
         if: failure()
         run: |
           echo 'Keep pending/uploading tags and inspect the original publish log and Central Portal.'
-          echo 'Run this workflow again with the same version to verify/finalize without uploading.'
+          echo 'Run this workflow again with the same repository and version to verify/finalize without uploading.'
           echo 'See docs/releases.md for partial publication or protected-branch outcomes.'

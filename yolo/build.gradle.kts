@@ -8,10 +8,7 @@ plugins {
     id("com.vanniktech.maven.publish")
 }
 
-val releaseVersion = providers.gradleProperty("releaseVersion")
-require(releaseVersion.orNull?.matches(Regex("(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)")) != false) {
-    "releaseVersion must be a stable X.Y.Z version"
-}
+val jitpackBuild = providers.gradleProperty("jitpackBuild").orElse("false").map { it.toBoolean() }
 val publicationProperties = Properties().apply {
     rootProject.layout.projectDirectory.file("gradle.properties").asFile.inputStream().use { load(it) }
 }
@@ -79,11 +76,15 @@ dependencies {
 
 mavenPublishing {
     // Set coordinates before creating publications, which finalizes these values.
-    coordinates(publicationGroup, publicationArtifact, releaseVersion.orElse("0.0.0-SNAPSHOT").get())
+    coordinates(
+        if (jitpackBuild.get()) "com.github.lambdawalker" else publicationGroup,
+        if (jitpackBuild.get()) "android.apexfission.yolo" else publicationArtifact,
+        if (jitpackBuild.get()) "yolo~v${project.version}" else project.version.toString(),
+    )
     configure(AndroidSingleVariantLibrary(variant = "release", javadocJar = JavadocJar.Empty(), sourcesJar = SourcesJar.Sources()))
-    publishToMavenCentral()
+    if (!jitpackBuild.get()) publishToMavenCentral()
     // Ordinary builds and the local verification repository never need secrets.
-    if (providers.gradleProperty("signingInMemoryKey").isPresent) signAllPublications()
+    if (!jitpackBuild.get() && providers.gradleProperty("signingInMemoryKey").isPresent) signAllPublications()
     pom {
         name.set("Apexfission YOLO")
         description.set("Android YOLO detection with LiteRT inference, image preprocessing, and NMS post-processing.")
@@ -114,8 +115,8 @@ mavenPublishing {
 // Ship the maintained guides in the documentation classifier; do not pretend
 // that Java's javadoc tool generates an API reference for Kotlin sources.
 tasks.withType<com.vanniktech.maven.publish.tasks.JavadocJar>().configureEach {
-    from(rootProject.file("README.md"), rootProject.file("LICENSE"))
-    from("src/main/java") { include("**/README.md"); into("packages") }
+    from(rootProject.file("docs/agents")) { include("**/*.md"); into("docs") }
+    from(rootProject.file("LICENSE"))
 }
 tasks.withType<org.gradle.jvm.tasks.Jar>().configureEach {
     isPreserveFileTimestamps = false
@@ -131,17 +132,8 @@ publishing {
     }
 }
 
-val verifyCentralReservation = tasks.register<Exec>("verifyCentralReservation") {
-    group = "publishing"
-    workingDir(rootDir)
-    commandLine("python3", "scripts/release.py", "guard", "--version", releaseVersion.orElse("").get())
-    doFirst {
-        listOf("mavenCentralUsername", "mavenCentralPassword", "signingInMemoryKey").forEach {
-            require(!providers.gradleProperty(it).orNull.isNullOrBlank()) { "Missing release credential: $it" }
-        }
-    }
-}
-// Guard upload and aggregate/close/release tasks, not just the final lifecycle task.
 tasks.configureEach {
-    if (name.contains("MavenCentral", ignoreCase = true)) dependsOn(verifyCentralReservation)
+    if (name.contains("MavenCentral", ignoreCase = true)) {
+        dependsOn(rootProject.tasks.named("verifyPublicationReservation"))
+    }
 }

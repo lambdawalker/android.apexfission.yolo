@@ -1,0 +1,29 @@
+{
+  "destinations": {
+    "maven-central": {
+      "artifact": "yolo",
+      "group": "com.apexfission.android",
+      "legacy_tag": "v0.1.0",
+      "module": "yolo",
+      "phase": "confirmed-public",
+      "repository": "maven-central",
+      "repository_url": "https://repo.maven.apache.org/maven2",
+      "sha256": {
+        "-javadoc.jar": "33650ed9ac5e86130400c7db035c25bb999578a8b6acfb8c1895cf455b3f2cb0",
+        "-sources.jar": "6ca1330ba68db7984828045951f82c6a83df1d6f68f15edf383a040845ae4a6d",
+        ".aar": "a827407a924aea6b5f32584d848b9a4eb7fc195971804a18b663b776cc24758a",
+        ".module": "76f87dfddffa1763308ae9eed2aaaff02d2f3156ed9af3d5b38602186c51181e",
+        ".pom": "a6755525ce3f3e6b923651767f45cdc1f4f6d6d22487bab8c127ef7c150f49a6"
+      },
+      "source": "76abd72e4e00b2b0ed316e333aff35f6fa989a91",
+      "version": "0.1.0",
+      "workflow_run": "37266269907"
+    }
+  },
+  "documentation_ref": "d85bbb81a7d74483ba512df6d5a570b90a876f63",
+  "module": "yolo",
+  "schema": 1,
+  "source": "76abd72e4e00b2b0ed316e333aff35f6fa989a91",
+  "translation_tree": "0f94e1304ac8106aa8d9f7ea0cd6ddcd9e8fe65f",
+  "version": "0.1.0"
+}
