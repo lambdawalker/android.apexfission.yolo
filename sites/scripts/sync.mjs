@@ -35,6 +35,7 @@ for(const file of await walk(resolve(root,'docs/agents'))){if(!file.endsWith('.m
  const old=await readFile(file,'utf8'),fresh=await expand(old);
  if(old!==fresh){if(process.argv.includes('--update-snippets'))await writeFile(file,fresh);else throw new Error(`Stale snippet in ${file}; run node scripts/sync.mjs --update-snippets and review`);}
 }
+await rm('dist',{recursive:true,force:true});
 await rm('public',{recursive:true,force:true});await mkdir('public/agents',{recursive:true});
 for(const entry of await readdir('src/content/docs'))if(entry!=='index.md')await rm(resolve('src/content/docs',entry),{recursive:true,force:true});
 const record=JSON.parse(await read('docs/release.json'));
@@ -54,3 +55,6 @@ await put('public/IMPORT.md',rewriteMarkdown(await read('IMPORT.md'),'IMPORT.md'
 for(const [source,slug] of [['IMPORT.md','installation'],['docs/maintenance.md','development'],['docs/coverage.md','coverage'],['docs/releases.md','releases']])await human(source,slug);
 await put('public/llms.txt',`# Apexfission YOLO\n\nMain development docs at ${process.env.DOCS_REF}.\n\n- [Agent entry](${base}/agents/index.md)\n- [Installation](${base}/IMPORT.md)\n- [API](${base}/agents/api.md)\n- [Quickstart](${base}/agents/quickstart.md)\n`);
 console.log('Verified installation, reviewed API inputs, demo-source snippets, and synchronized human/raw guides.');
+
+const {buildVersioned}=await import('./build-versioned.mjs');
+await buildVersioned(root);

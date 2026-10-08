@@ -20,7 +20,7 @@ function inspect(text, html) {
     function walk(node) {
       for (const {name,value} of node.attrs ?? []) {
         if (name === 'id') ids.add(value);
-        if (['href','src'].includes(name) && !(node.tagName === 'link' && node.attrs.some(a => a.name === 'rel' && a.value === 'canonical'))) links.push(value);
+        if ((['href','src'].includes(name)||(name==='value'&&node.tagName==='option'&&node.parentNode?.attrs?.some(a=>a.name==='data-doc-navigation'))) && !(node.tagName === 'link' && node.attrs.some(a => a.name === 'rel' && a.value === 'canonical'))) links.push(value);
       }
       for (const child of node.childNodes ?? []) walk(child);
     }
@@ -29,6 +29,7 @@ function inspect(text, html) {
     const tree = parser().parse(text), slugger = new GithubSlugger();
     const plain = node => node.value ?? (node.children ?? []).map(plain).join('');
     visit(tree, node => {
+      if (node.type === 'html') for (const match of node.value.matchAll(/id=["']([^"']+)["']/g)) ids.add(match[1]);
       if (node.type === 'heading') ids.add(slugger.slug(plain(node)));
       if (['link','image','definition'].includes(node.type)) links.push(node.url);
     });

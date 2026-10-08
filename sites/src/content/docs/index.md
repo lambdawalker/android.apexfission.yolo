@@ -33,7 +33,9 @@ is required. It supports a specific YOLO tensor layout; an export named “YOLO�
 compatible. GPU use is a request. See [limitations](/android.apexfission.yolo/limitations/) before adopting it.
 
 ## Documentation scope
-This site describes **main development source** at the build commit displayed above.
+This legacy overview describes **main development source** at the build commit displayed above.
+For immutable release guides, choose a version in the [English catalog](/android.apexfission.yolo/en/)
+or the [catálogo en español](/android.apexfission.yolo/es/).
 [Installation](/android.apexfission.yolo/installation/) separately identifies the last confirmed
 Maven release. Source and API extracts are synchronized at build time; raw agent guides are
 available without JavaScript. [Maintenance](/android.apexfission.yolo/development/) explains

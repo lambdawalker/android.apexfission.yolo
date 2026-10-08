@@ -1,0 +1,10 @@
+# JitPack selects one bootstrap JDK from this list, not a Java toolchain matrix.
+jdk:
+  - openjdk17
+before_install:
+  # Match gradle/gradle-daemon-jvm.properties without its remote Foojay fallback.
+  - sdk install java 21.0.10-tem
+  - sdk use java 21.0.10-tem
+  - java -version
+install:
+  - python3 scripts/jitpack_build.py

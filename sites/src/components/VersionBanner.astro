@@ -1,12 +1,62 @@
 ---
 import build from '../build.json';
+import scopes from '../versions.json';
+import {guideForPath,scopeHref,markdownHref} from '../../scripts/navigation.mjs';
+const base='/android.apexfission.yolo';
+const path=Astro.url.pathname;
+const current=scopes.find(s=>path.startsWith(s.root));
+const language=current?.language ?? (path.startsWith(base+'/es/')?'es':'en');
+const es=language==='es';
+const module=current?.module ?? 'yolo';
+const version=current?.version ?? 'development';
+const slug=guideForPath(path,base,current);
+const href=(scope:typeof scopes[number])=>scopeHref(scope,slug);
+const selectedScope=current??scopes.find(s=>s.language===language&&s.version==='development')!;
+const sameLanguage=scopes.filter(s=>s.language===language);
+const versions=sameLanguage.filter(s=>s.module===module).slice().reverse();
+const languages=['en','es'].map(lang=>({lang,target:scopes.find(s=>s.language===lang&&s.module===module&&s.version===version)!}));
 ---
-<aside aria-label="Documentation version" class="version-banner">
-  Main development docs · build {build.ref.slice(0, 12)} ·
-  <a href="/android.apexfission.yolo/installation/">Confirmed release: {build.version}</a> ·
-  <a href="/android.apexfission.yolo/agents/index.md">Raw AI guides</a>
+<aside aria-label={es?'Versión de la documentación':'Documentation version'} class="version-banner">
+ <div class="selectors">
+  <label>{es?'Versión':'Version'}
+   <select data-doc-navigation aria-label={es?'Versión':'Version'}>
+    {versions.map(s=><option value={href(s)} selected={s.version===version}>{s.version==='development'?(es?'Desarrollo':'Development'):s.version}</option>)}
+   </select>
+  </label>
+  <label>{es?'Idioma':'Language'}
+   <select data-doc-navigation aria-label={es?'Idioma':'Language'}>
+    {languages.map(({lang,target})=><option value={href(target)} selected={lang===language}>{lang==='en'?'English':'Español'}</option>)}
+   </select>
+  </label>
+  <a class="catalog" href={`${base}/${language}/`}>{es?'Todas las versiones':'All versions'}</a>
+ </div>
+ <div class="provenance">
+  {version==='development'?(es?'Documentación de desarrollo':'Development documentation'):`${module} ${version}`}
+  {' · '}{es?'Código':'Code'} <a href={`https://github.com/lambdawalker/android.apexfission.yolo/commit/${current?.source??build.ref}`}>{(current?.source??build.ref).slice(0,12)}</a>
+  {' · '}<a href={markdownHref(selectedScope,slug)}>{es?'Guía en Markdown':'Markdown guide'}</a>
+ </div>
+ <p id="guide-unavailable">{es?'La guía solicitada no existe en esta versión; se muestra su índice.':'The requested guide is unavailable in this version; its index is shown.'}</p>
+ <noscript><p>{es?'Usa el catálogo para elegir una versión sin JavaScript.':'Use the catalog to choose a version without JavaScript.'} <a href={`${base}/${language==='en'?'es':'en'}/`}>{language==='en'?'Español':'English'}</a></p></noscript>
 </aside>
+<script>
+ document.querySelectorAll<HTMLSelectElement>('select[data-doc-navigation]').forEach(select=>{
+  select.addEventListener('change',()=>window.location.assign(select.value));
+ });
+ window.addEventListener('pageshow',()=>{
+  document.querySelectorAll<HTMLSelectElement>('select[data-doc-navigation]').forEach(select=>{
+   const original=select.querySelector<HTMLOptionElement>('option[selected]');
+   if(original)select.value=original.value;
+  });
+ });
+</script>
 <style>
-.version-banner {padding:.65rem 1rem;background:var(--sl-color-gray-6);font-size:.875rem;border-bottom:1px solid var(--sl-color-gray-5)}
+#guide-unavailable {display:none}
+#guide-unavailable:target {display:block}
+.version-banner {padding:1rem 1.5rem;background:var(--sl-color-gray-6);border-bottom:1px solid var(--sl-color-gray-5)}
+.selectors {display:flex;gap:1rem;align-items:end;flex-wrap:wrap;max-width:76rem;margin:auto}
+label {display:grid;gap:.25rem;font-size:.8rem;font-weight:600;min-width:9rem}
+select {padding:.45rem .65rem;border:1px solid var(--sl-color-gray-4);border-radius:.35rem;background:var(--sl-color-bg);color:var(--sl-color-text);font:inherit;font-size:.9rem;min-height:2.5rem}
 a {color:var(--sl-color-text-accent);text-decoration:underline}
+.catalog {padding:.5rem 0;font-size:.9rem}
+.provenance {max-width:76rem;margin:.6rem auto 0;font-size:.8rem;color:var(--sl-color-gray-2)}
 </style>

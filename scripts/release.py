@@ -100,7 +100,16 @@ def published_versions(group, artifact):
     return [node.text for node in versions]
 
 
-def verify_pom(data, group, artifact, version):
+def coordinates_dependency(properties=None):
+    properties = properties if properties is not None else (ROOT / 'gradle.properties').read_text()
+    dependency = next((line.split('=', 1)[1].strip() for line in properties.splitlines()
+                       if line.startswith('COORDINATES_DEPENDENCY=')), '')
+    if len(dependency.split(':')) != 3 or not all(dependency.split(':')):
+        raise ValueError('Missing explicit public Coordinates dependency')
+    return tuple(dependency.split(':'))
+
+
+def verify_pom(data, group, artifact, version, expected_dependency=None):
     xml = ET.fromstring(data)
     for node in xml.iter():
         node.tag = node.tag.split('}')[-1]
@@ -113,10 +122,7 @@ def verify_pom(data, group, artifact, version):
         if not xml.findtext(path):
             raise ValueError(f'Missing POM metadata: {path}')
     dependencies = xml.findall('dependencies/dependency')
-    dependency = next(line.split('=', 1)[1].strip() for line in
-                      (ROOT / 'gradle.properties').read_text().splitlines()
-                      if line.startswith('COORDINATES_DEPENDENCY='))
-    expected = tuple(dependency.split(':'))
+    expected = expected_dependency or coordinates_dependency()
     if not any(tuple(n.findtext(k) for k in ('groupId', 'artifactId', 'version')) == expected
                and n.findtext('scope', 'compile') == 'compile' for n in dependencies):
         raise ValueError('Public coordinates dependency must be exported with compile scope')
@@ -125,13 +131,21 @@ def verify_pom(data, group, artifact, version):
         raise ValueError('Unresolved project dependency in POM')
 
 
-def verify_artifact(data, suffix, group, artifact, version):
+def verify_artifact(data, suffix, group, artifact, version, expected_dependency=None):
     if suffix == '.pom':
-        verify_pom(data, group, artifact, version)
+        verify_pom(data, group, artifact, version, expected_dependency)
     elif suffix == '.module':
         module = json.loads(data)
         if tuple(module.get('component', {}).get(k) for k in ('group', 'module', 'version')) != (group, artifact, version):
             raise ValueError('Gradle module coordinates mismatch')
+        api_variants = [v for v in module.get('variants', [])
+                        if v.get('attributes', {}).get('org.gradle.usage') == 'java-api']
+        expected = expected_dependency or coordinates_dependency()
+        if not api_variants or any(not any(
+                (d.get('group'), d.get('module'), d.get('version', {}).get('requires')) == expected
+                for d in variant.get('dependencies', [])) for variant in api_variants):
+            raise ValueError('Public coordinates dependency must be exported in Gradle API metadata')
+
     else:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             if archive.testzip():
@@ -150,6 +164,14 @@ def verify_artifact(data, suffix, group, artifact, version):
                 raise ValueError('Sources JAR has no Kotlin source')
             elif suffix == '-javadoc.jar' and not any(n.endswith(('.md', '.html')) for n in names):
                 raise ValueError('Documentation JAR has no documentation')
+
+
+def zip_contents(data):
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        if len(archive.namelist()) != len(set(archive.namelist())):
+            raise ValueError('Duplicate archive entries')
+        return {name: hashlib.sha256(archive.read(name)).hexdigest() for name in archive.namelist()
+                if not name.endswith('/') and name != 'META-INF/MANIFEST.MF'}
 
 
 def git(*args):
@@ -441,7 +463,9 @@ def main():
             p.add_argument('--timeout', type=int, default=2400)
     args = parser.parse_args()
     if args.command in ('generate', 'verify'):
-        documentation(args.command == 'verify')
+        # Keep legacy functions for original-journal recovery; CLI uses current confirmed pointers.
+        import module_release
+        module_release.documentation(args.command == 'verify')
     elif args.command == 'prepare':
         prepare(args.resume, args.initial)
     elif args.command == 'prepare-finalization':

@@ -1,17 +1,32 @@
-<!-- GENERATED FILE. Edit docs/templates/IMPORT.md.template.
-Regenerate: ./gradlew generateImportDocs
-Released metadata: docs/release.json (written only after public verification).
--->
+<!-- GENERATED FILE. Source: docs/templates/IMPORT.md.template. Run ./gradlew generateImportDocs. -->
 # Install Apexfission YOLO
 
-Confirmed release: **0.1.0** · Maven coordinates: `com.apexfission.android:yolo:0.1.0`.
+This is the authoritative latest confirmed installation reference. Choose one destination and one dependency syntax. Pending uploads and tags are not proof of availability.
 
-This is the authoritative installation, Maven coordinate, and released-version
-reference for humans and AI agents. Read it instead of guessing a version.
+## yolo: yolo
 
-## Gradle Kotlin DSL
+Confirmed version: **0.1.0**. Source: [76abd72e4e00b2b0ed316e333aff35f6fa989a91](https://github.com/lambdawalker/android.apexfission.yolo/commit/76abd72e4e00b2b0ed316e333aff35f6fa989a91).
 
-Add `mavenCentral()` to your settings repositories, then:
+Choose **one** destination below and **one** dependency syntax. Each destination provides this same release; do not add duplicate dependencies.
+
+### maven-central
+
+Repository: **maven-central**.
+
+#### Gradle Kotlin DSL
+
+In `settings.gradle.kts`:
+
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+```
+
+In the app's `build.gradle.kts`:
 
 ```kotlin
 dependencies {
@@ -19,7 +34,20 @@ dependencies {
 }
 ```
 
-## Gradle Groovy DSL
+#### Gradle Groovy DSL
+
+In `settings.gradle`:
+
+```groovy
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+```
+
+In the app's `build.gradle`:
 
 ```groovy
 dependencies {
@@ -27,41 +55,50 @@ dependencies {
 }
 ```
 
-## Version catalog
+#### Version catalog
+
+Use the dependency repositories shown above. Add to `gradle/libs.versions.toml`:
 
 ```toml
-[versions]
-apexfission-yolo = "0.1.0"
-
 [libraries]
-apexfission-yolo = { module = "com.apexfission.android:yolo", version.ref = "apexfission-yolo" }
+yolo = { module = "com.apexfission.android:yolo", version = "0.1.0" }
 ```
+
+Then use this instead of the direct dependency in the app's `build.gradle.kts`:
 
 ```kotlin
-implementation(libs.apexfission.yolo)
+dependencies {
+    implementation(libs.yolo)
+}
 ```
 
-## Maven
+#### Maven
+
+Add these repositories and dependency to `pom.xml`:
 
 ```xml
-<dependency>
+<repositories>
+  <repository>
+    <id>google</id>
+    <url>https://dl.google.com/dl/android/maven2</url>
+  </repository>
+  <repository>
+    <id>central</id>
+    <url>https://repo.maven.apache.org/maven2</url>
+  </repository>
+</repositories>
+<dependencies>
+  <dependency>
     <groupId>com.apexfission.android</groupId>
     <artifactId>yolo</artifactId>
     <version>0.1.0</version>
     <type>aar</type>
-</dependency>
+  </dependency>
+</dependencies>
 ```
 
-Built from source commit [`76abd72e4e00b2b0ed316e333aff35f6fa989a91`](https://github.com/lambdawalker/android.apexfission.yolo/commit/76abd72e4e00b2b0ed316e333aff35f6fa989a91).
+## Requirements
 
-Add both `google()` and `mavenCentral()` to your Gradle settings repositories.
-This is an Android AAR requiring minSdk 28, with JVM 17 bytecode. It is built
-with Kotlin 2.4.20; use a compatible Kotlin compiler. Maven consumers need
-Android AAR support; Gradle with the Android plugin is the supported build path.
+Android minSdk 28. The library targets JVM 17; the checked-in Gradle daemon uses Java 21 and compileSdk 37. Geometry types are exported through the explicit public Coordinates dependency. The demo uses the local project dependency.
 
-The published Apexfission Coordinates library is exposed transitively through
-YOLO's public API. You do not need a coordinates source checkout. Supply your own
-model and labels, and close detectors/engines when finished.
-
-See [README.md](README.md) for scope and [the release runbook](docs/releases.md)
-for publication and recovery.
+See [quickstart](docs/agents/quickstart.md), [release guide](docs/releases.md), and the website's exact-version archive for matching historical guides. Never guess a released version or coordinates.

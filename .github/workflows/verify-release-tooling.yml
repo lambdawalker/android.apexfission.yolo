@@ -15,17 +15,27 @@ concurrency:
 
 jobs:
   verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [yolo]
+    env:
+      RELEASE_MODULE: ${{ matrix.module }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - run: python3 -m pip install -r scripts/requirements-publishing.txt
+      - run: python3 scripts/publishing_config.py check
       - name: Test release policy and deterministic documentation
         run: |
           python3 -m unittest discover -s scripts/tests -v
-          python3 scripts/release.py verify
+          python3 scripts/module_release.py verify
           bash -n scripts/finalize-release.sh
       - uses: actions/setup-java@v4
         with:
@@ -36,12 +46,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Verify Gradle build and local publication without credentials
         run: |
-          ./gradlew generateImportDocs verifyImportDocs :yolo:testDebugUnitTest :yolo:lintRelease :yolo:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug :yolo:publishAllPublicationsToVerificationRepository -PreleaseVersion=9.8.7 --no-daemon
-          git diff --exit-code -- IMPORT.md docs/release.json
-          python3 scripts/release.py check-local --version 9.8.7 --source "$(git rev-parse HEAD)"
+          ./gradlew generateImportDocs verifyImportDocs :yolo:testDebugUnitTest :yolo:lintRelease :yolo:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug ":$RELEASE_MODULE:publishAllPublicationsToVerificationRepository" "-PreleaseModule=$RELEASE_MODULE" -PreleaseVersion=9.8.7 --no-daemon
+          git diff --exit-code -- IMPORT.md docs/releases/
+          python3 scripts/module_release.py check-local --module "$RELEASE_MODULE" --version 9.8.7 --source "$(git rev-parse HEAD)"
+      - name: Verify JitPack coordinates and unsigned artifacts without publishing
+        env:
+          RELEASE_REPOSITORY: jitpack
+        run: |
+          ./gradlew ":$RELEASE_MODULE:publishAllPublicationsToVerificationRepository" -PjitpackBuild=true "-PreleaseModule=$RELEASE_MODULE" -PreleaseVersion=9.8.7 --no-daemon
+          python3 scripts/module_release.py check-local --module "$RELEASE_MODULE" --version 9.8.7 --source "$(git rev-parse HEAD)"
       - name: Upload demo APK
         uses: actions/upload-artifact@v4
         with:
-          name: yolo-demo
+          name: yolo-demo-${{ matrix.module }}
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
