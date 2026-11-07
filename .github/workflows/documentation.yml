@@ -16,18 +16,18 @@ jobs:
     outputs:
       source: ${{ steps.source.outputs.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'workflow_run' && 'main' || github.sha }}
           fetch-depth: 0
       - id: source
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: npm
           cache-dependency-path: sites/package-lock.json
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: python3 -m pip install -r scripts/requirements-publishing.txt
@@ -35,7 +35,7 @@ jobs:
         working-directory: sites
         env:
           DOCS_REF: ${{ steps.source.outputs.sha }}
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: sites/dist
   deploy:
@@ -61,8 +61,8 @@ jobs:
         run: |
           latest=$(gh api "repos/${{ github.repository }}/git/ref/heads/main" --jq '.object.sha')
           if [ "$latest" = "$SOURCE_SHA" ]; then echo "deploy=true" >> "$GITHUB_OUTPUT"; fi
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
         if: steps.current.outputs.deploy == 'true'
-      - uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@v5
         if: steps.current.outputs.deploy == 'true'
         id: deployment
