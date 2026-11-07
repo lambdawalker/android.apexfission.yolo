@@ -51,10 +51,10 @@ jobs:
       environment: ${{ steps.repository.outputs.environment }}
       publisher: ${{ steps.repository.outputs.publisher }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: python3 -m pip install -r scripts/requirements-publishing.txt
@@ -83,12 +83,12 @@ jobs:
       group: maven-central-yolo
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
           lfs: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: python3 -m pip install -r scripts/requirements-publishing.txt

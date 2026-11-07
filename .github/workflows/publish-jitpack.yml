@@ -31,11 +31,11 @@ jobs:
       RELEASE_MODULE: ${{ inputs.module }}
       GIT_LFS_SKIP_SMUDGE: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: python3 -m pip install -r scripts/requirements-publishing.txt
@@ -53,18 +53,18 @@ jobs:
         env:
           SOURCE_SHA: ${{ steps.release.outputs.source }}
         run: git checkout --detach "$SOURCE_SHA"
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         if: steps.release.outputs.skip != 'true'
         with:
           distribution: temurin
           java-version: |
             17
             21
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
         if: steps.release.outputs.skip != 'true'
         with:
           cache-disabled: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: steps.release.outputs.skip != 'true'
         with:
           node-version: '24'

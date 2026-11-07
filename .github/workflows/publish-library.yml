@@ -30,10 +30,10 @@ jobs:
       environment: ${{ steps.repository.outputs.environment }}
       publisher: ${{ steps.repository.outputs.publisher }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: python3 -m pip install -r scripts/requirements-publishing.txt
@@ -73,12 +73,12 @@ jobs:
       version: ${{ steps.release.outputs.version }}
       source: ${{ steps.release.outputs.source }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
           lfs: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: python3 -m pip install -r scripts/requirements-publishing.txt
@@ -103,18 +103,18 @@ jobs:
         env:
           SOURCE_SHA: ${{ steps.release.outputs.source }}
         run: git checkout --detach "$SOURCE_SHA"
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         if: steps.release.outputs.skip != 'true'
         with:
           distribution: temurin
           java-version: |
             17
             21
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
         if: steps.release.outputs.skip != 'true'
         with:
           cache-disabled: true
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: steps.release.outputs.skip != 'true'
         with:
           node-version: '24'
@@ -137,7 +137,7 @@ jobs:
           python3 scripts/module_release.py check-local --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$SOURCE_SHA"
       - name: Upload demo APK
         if: steps.release.outputs.skip != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: yolo-demo
           path: app/build/outputs/apk/debug/app-debug.apk
@@ -171,7 +171,7 @@ jobs:
           ./gradlew ":$RELEASE_MODULE:$task" "-PreleaseModule=$RELEASE_MODULE" "-PreleaseVersion=$RELEASE_VERSION" --no-daemon --console=plain 2>&1 | tee "$RUNNER_TEMP/repository-publish.log"
       - name: Retain deployment log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: repository-publish-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/repository-publish.log
