@@ -19,15 +19,15 @@ class NotReady(urllib.error.URLError):
 REQUIRED_SUFFIXES = ('.pom', '.aar', '-sources.jar', '-javadoc.jar')
 
 
-def coordinates(module, semantic_version, artifact):
+def coordinates(module, semantic_version, artifact, *, scoped=False):
     release.version_key(semantic_version)
     if module not in ARTIFACTS or artifact not in (ARTIFACTS[module], ARTIFACT):
         raise ValueError('Unexpected JitPack module/artifact identity')
-    return GROUP, ARTIFACT, f'{module}~v{semantic_version}'
+    return GROUP, ARTIFACT, f'{module}~v{semantic_version}' + ('-jitpack' if scoped else '')
 
 
 def artifact_base(record):
-    group, artifact, version = coordinates(record['module'], record['version'], record['artifact'])
+    group, artifact, version = coordinates(record['module'], record['version'], record['artifact'], scoped='source_tag' in record)
     if record['group'] != group or record['artifact'] != artifact or record['consumer_version'] != version:
         raise ValueError('JitPack record coordinates mismatch')
     return f'{REPOSITORY}/{group.replace(".", "/")}/{artifact}/{version}/{artifact}-{version}'

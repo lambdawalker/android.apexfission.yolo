@@ -14,6 +14,12 @@ on:
         default: ''
         type: string
 
+      allow_pending_jitpack:
+        description: 'Bypass older pending JitPack attempts (requires an explicit newer version)'
+        required: false
+        default: false
+        type: boolean
+
 permissions:
   contents: write
 
@@ -43,11 +49,18 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-      - name: Resolve shared module version
+      - name: Resolve destination version
         id: release
         env:
           REQUESTED_VERSION: ${{ inputs.version }}
-        run: python3 scripts/module_release.py prepare --module "$RELEASE_MODULE" --version "$REQUESTED_VERSION"
+          ALLOW_PENDING_JITPACK: ${{ inputs.allow_pending_jitpack }}
+        shell: bash
+        run: |
+          args=()
+          if [[ "$ALLOW_PENDING_JITPACK" == true ]]; then
+            args+=(--allow-pending-jitpack)
+          fi
+          python3 scripts/module_release.py prepare --module "$RELEASE_MODULE" --version "$REQUESTED_VERSION" "${args[@]}"
       - name: Check out original release source
         if: steps.release.outputs.skip != 'true'
         env:
@@ -80,14 +93,21 @@ jobs:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           SOURCE_SHA: ${{ steps.release.outputs.source }}
         run: |
-          ./gradlew :app:assembleDebug ":$RELEASE_MODULE:testDebugUnitTest" ":$RELEASE_MODULE:publishAllPublicationsToVerificationRepository" -PjitpackBuild=true "-PreleaseModule=$RELEASE_MODULE" "-PreleaseVersion=$RELEASE_VERSION" --no-daemon
+          ./gradlew :app:assembleDebug ":$RELEASE_MODULE:testDebugUnitTest" ":$RELEASE_MODULE:publishAllPublicationsToVerificationRepository" -PjitpackBuild=true -PjitpackScopedTag=true "-PreleaseModule=$RELEASE_MODULE" "-PreleaseVersion=$RELEASE_VERSION" --no-daemon
           python3 scripts/module_release.py check-local --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$SOURCE_SHA"
       - name: Reserve destination and canonical source tag atomically
         if: steps.release.outputs.skip != 'true'
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           SOURCE_SHA: ${{ steps.release.outputs.source }}
-        run: python3 scripts/module_release.py reserve --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$SOURCE_SHA"
+          ALLOW_PENDING_JITPACK: ${{ inputs.allow_pending_jitpack }}
+        shell: bash
+        run: |
+          args=()
+          if [[ "$ALLOW_PENDING_JITPACK" == true ]]; then
+            args+=(--allow-pending-jitpack)
+          fi
+          python3 scripts/module_release.py reserve --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$SOURCE_SHA" "${args[@]}"
       - name: Trigger build and verify public artifacts and source
         if: steps.release.outputs.skip != 'true'
         env:

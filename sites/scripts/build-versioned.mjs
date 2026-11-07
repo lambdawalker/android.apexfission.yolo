@@ -5,7 +5,7 @@ import {readRevision,readTranslationTree,readWorkingDocs,translatedGuide,rewrite
 import {base,repository} from './markdown.mjs';
 
 export async function buildVersioned(root) {
- const catalog=JSON.parse(execFileSync('python3',['scripts/documentation_history.py','export'],{cwd:root,encoding:'utf8',maxBuffer:16*1024*1024}));
+ const catalog=JSON.parse(execFileSync('python3',['scripts/documentation_history.py','export'],{cwd:root,encoding:'utf8',maxBuffer:16*1024*1024})).map(entry=>({...entry,version:entry.route_version}));
  const put=async(path,text)=>{await mkdir(dirname(path),{recursive:true});await writeFile(path,text);};
  const snapshots=new Map(),scopes=[];
  const working=readWorkingDocs(root);

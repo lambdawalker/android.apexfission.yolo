@@ -111,7 +111,7 @@ class GitTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
         self.git('init','-q');self.git('config','user.email','test@example.com');self.git('config','user.name','test')
-        self.write('gradle.properties','GROUP=com.apexfission.android\nPOM_ARTIFACT_ID=yolo\n');self.write('yolo/src/main/code.kt','one');self.commit();self.source=self.git('rev-parse','HEAD');self.git('tag','yolo/v0.2.9')
+        self.write('gradle.properties','GROUP=com.apexfission.android\nPOM_ARTIFACT_ID=yolo\n');self.write('yolo/src/main/code.kt','one');self.commit();self.source=self.git('rev-parse','HEAD');self.git('tag','yolo/v0.2.9-maven-central')
     def git(self,*args):return subprocess.check_output(['git',*args],cwd=self.root,text=True,stderr=subprocess.DEVNULL).strip()
     def write(self,path,value):
         p=self.root/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(value)
@@ -121,9 +121,34 @@ class GitTests(unittest.TestCase):
         self.write('IMPORT.md','updated');self.write('docs/es/index.md','translation');self.commit();self.assertEqual(self.select(),('0.2.9',self.source))
         self.write('yolo/src/main/code.kt','two');self.commit();self.assertEqual(self.select()[0],'0.2.10')
     def test_pending_cross_destination_and_legacy_conflicts(self):
-        self.git('tag','release-pending/jitpack/yolo/0.2.10');self.assertEqual(self.select(),('0.2.10',self.source))
-        self.write('gradle/libs.versions.toml','change');self.commit();self.git('tag','v0.2.10')
+        self.git('tag','release-pending/jitpack/yolo/0.2.10');self.assertEqual(self.select(),('0.2.9',self.source))
+        self.write('gradle/libs.versions.toml','change');self.commit();self.git('tag','maven-central/yolo/v0.2.9')
         with self.assertRaisesRegex(ValueError,'Conflicting'):self.select()
+    def test_same_version_can_identify_different_provider_commits(self):
+        source = self.git('rev-parse', 'HEAD')
+        self.git('tag', 'yolo/v1.0.0-maven-central')
+        self.write('gradle/libs.versions.toml', 'changed'); self.commit()
+        head = self.git('rev-parse', 'HEAD')
+        self.assertNotEqual(source, head)
+        tags = self.git('tag').splitlines()
+        self.assertEqual(('1.0.0', head), identity.select('yolo', head, self.git, tags, [], '1.0.0', destination='jitpack'))
+
+    def test_jitpack_override_preserves_pending_and_rejects_started_upload(self):
+        module, old, source = 'yolo', '0.1.0', 'a'*40
+        name = f'release-pending/jitpack/{module}/{old}'
+        marker = f'release-uploading/jitpack/{module}/{old}'
+        with patch.dict(m.os.environ, {'RELEASE_REPOSITORY': 'jitpack'}), \
+             patch.object(m, 'read_record', return_value={'module': module, 'version': old, 'source': source}), \
+             patch.object(m, 'remote_ref', return_value=source), patch.object(m, 'git', return_value=source) as git:
+            with self.assertRaisesRegex(ValueError, 'Unresolved'):
+                m.ensure_available(module, [name])
+            with self.assertRaisesRegex(ValueError, 'newer'):
+                m.ensure_available(module, [name], pending_override=(old, source))
+            m.ensure_available(module, [name], pending_override=('0.1.1', source))
+            with self.assertRaisesRegex(ValueError, 'Unresolved'):
+                m.ensure_available(module, [name, marker], pending_override=('0.1.1', source))
+            self.assertFalse(any(call.args[0] == 'push' for call in git.call_args_list))
+
     def test_major_override_and_older_rejection(self):
         self.assertEqual(self.select('1.0.0'),('1.0.0',self.source))
         with self.assertRaises(ValueError):self.select('0.2.8')

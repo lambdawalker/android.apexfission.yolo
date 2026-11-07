@@ -53,7 +53,7 @@ jobs:
         env:
           RELEASE_REPOSITORY: jitpack
         run: |
-          ./gradlew ":$RELEASE_MODULE:publishAllPublicationsToVerificationRepository" -PjitpackBuild=true "-PreleaseModule=$RELEASE_MODULE" -PreleaseVersion=9.8.7 --no-daemon
+          ./gradlew ":$RELEASE_MODULE:publishAllPublicationsToVerificationRepository" -PjitpackBuild=true -PjitpackScopedTag=true "-PreleaseModule=$RELEASE_MODULE" -PreleaseVersion=9.8.7 --no-daemon
           python3 scripts/module_release.py check-local --module "$RELEASE_MODULE" --version 9.8.7 --source "$(git rev-parse HEAD)"
       - name: Upload demo APK
         uses: actions/upload-artifact@v7

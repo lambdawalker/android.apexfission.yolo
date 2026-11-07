@@ -17,6 +17,12 @@ on:
         default: ''
         type: string
 
+      allow_pending_jitpack:
+        description: 'Bypass older pending JitPack attempts (requires an explicit newer version)'
+        required: false
+        default: false
+        type: boolean
+
 permissions:
   contents: write
 
@@ -51,6 +57,7 @@ jobs:
       environment: ${{ needs.configuration.outputs.environment }}
       module: ${{ inputs.module }}
       version: ${{ inputs.version }}
+      allow_pending_jitpack: ${{ inputs.allow_pending_jitpack }}
 
   publish:
     needs: configuration
