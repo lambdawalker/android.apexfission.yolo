@@ -10,10 +10,10 @@ def key(version):
     if not re.fullmatch(SEMVER,version): raise ValueError('Expected X.Y.Z')
     return tuple(map(int,version.split('.')))
 
-def canonical(module, version):
+def canonical(module, version, destination=None):
     if module not in ('yolo',): raise ValueError('Unknown module')
     key(version)
-    return f'{module}/v{version}'
+    return f'{module}/v{version}' + (f'-{destination}' if destination else '')
 
 def fingerprint(module, source, git):
     paths = [f'{module}/src/main',f'{module}/build.gradle.kts',f'{module}/README.md',
@@ -27,32 +27,40 @@ def fingerprint(module, source, git):
     props=git('show',f'{source}:gradle.properties')
     return hashlib.sha256(('\n'.join(entries)+'\n'+props).encode()).hexdigest()
 
-def history(module,git,tags,records):
-    found={}
-    pattern=re.compile(r'(?:[a-z][a-z0-9-]*/)?'+re.escape(module)+r'/v('+SEMVER+r')')
+def record_tag(record):
+    return record.get('source_tag') or record.get('legacy_tag')
+
+
+def history(module, git, tags, records, destination):
+    found = {}
+    scope = '' if destination == 'maven-central' else destination + '/'
+    scoped = re.compile(re.escape(module) + r'/v(' + SEMVER + r')-' + re.escape(destination))
+    pending = re.compile(r'release-(?:pending|uploading|failed)/' + re.escape(scope + module) + r'/(' + SEMVER + r')')
+    old_scoped = re.compile(re.escape(destination + '/' + module) + r'/v(' + SEMVER + r')')
+
+    def add(version, name):
+        found.setdefault(version, set()).add(git('rev-parse', f'{name}^{{commit}}'))
+
     for name in tags:
-        match=pattern.fullmatch(name) or re.fullmatch(r'release-(?:pending|uploading)/(?:[a-z][a-z0-9-]*/)?'+re.escape(module)+r'/('+SEMVER+r')',name)
-        if not match: match=re.fullmatch(r'v('+SEMVER+r')',name)
+        match = scoped.fullmatch(name) or pending.fullmatch(name) or old_scoped.fullmatch(name)
         if match:
-            version=match[1];source=git('rev-parse',f'{name}^{{commit}}')
-            found.setdefault(version,set()).add(source)
+            add(match[1], name)
     for record in records:
-        if record and record['module']==module:
-            key(record['version'])
-            # A record is only provenance when its immutable ref still agrees.
-            name=record.get('legacy_tag') or canonical(module,record['version'])
-            if name not in tags:
-                dest=record.get('repository','maven-central')
-                name=f'{dest}/{module}/v{record["version"]}'
-            if name not in tags or git('rev-parse',f'{name}^{{commit}}')!=record['source']:
+        if record and record['module'] == module and record.get('repository', 'maven-central') == destination:
+            version = record['version']
+            key(version)
+            explicit = record_tag(record)
+            candidates = [explicit] if explicit else [canonical(module, version), f'{destination}/{module}/v{version}']
+            name = next((name for name in candidates if name in tags and git('rev-parse', f'{name}^{{commit}}') == record['source']), None)
+            if name is None:
                 raise ValueError('Confirmed release is missing its source tag')
-            found.setdefault(record['version'],set()).add(record['source'])
+            add(version, name)
     for version,sources in found.items():
         if len(sources)!=1:raise ValueError(f'Conflicting source identities for {module} {version}; reconcile history before publishing')
     return {v:next(iter(s)) for v,s in found.items()}
 
-def select(module,source,git,tags,records,requested=''):
-    releases=history(module,git,tags,records)
+def select(module,source,git,tags,records,requested='', *, destination='maven-central'):
+    releases=history(module, git, tags, records, destination)
     if requested:key(requested)
     if not releases:return requested or '0.1.0',source
     latest=max(releases,key=key);original=releases[latest]

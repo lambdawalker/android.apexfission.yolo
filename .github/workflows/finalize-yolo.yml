@@ -102,7 +102,8 @@ jobs:
         if: steps.release.outputs.skip != 'true'
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
-        run: python3 scripts/module_release.py confirm --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --timeout 2400
+          SOURCE_SHA: ${{ steps.release.outputs.source }}
+        run: python3 scripts/module_release.py confirm --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$SOURCE_SHA" --timeout 2400
       - name: Atomically finalize docs, source tag, and attempt markers
         if: steps.release.outputs.skip != 'true'
         env:

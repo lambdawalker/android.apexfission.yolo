@@ -28,15 +28,26 @@ def validate(entry):
         raise ValueError('Documentation revision must be an immutable commit SHA')
     if 'translation_tree' in entry and not re.fullmatch(r'[0-9a-f]{40}', entry['translation_tree']):
         raise ValueError('Translation tree must be an immutable SHA')
+    if len({archive_path(record) for record in entry['destinations'].values()}) != 1:
+        raise ValueError('Archive destination scope conflict')
     for target, record in entry['destinations'].items():
         if _record(record) != target or any(record[k] != entry[k] for k in ('module', 'version', 'source')):
             raise ValueError('Archive identity conflict')
     return entry
 
 
+def archive_path(record):
+    suffix = '-' + record['repository'] if 'source_tag' in record else ''
+    return HISTORY / record['module'] / (record['version'] + suffix + '.json')
+
+
+def route_version(entry):
+    return archive_path(next(iter(entry['destinations'].values()))).stem
+
+
 def archive_record(root, record):
     target = _record(record)
-    path = HISTORY / record['module'] / (record['version'] + '.json')
+    path = archive_path(record)
     absolute = root / path
     entry = validate(json.loads(absolute.read_text())) if absolute.exists() else dict(
         schema=1, module=record['module'], version=record['version'], source=record['source'],
@@ -72,17 +83,17 @@ def load_catalog(root):
     entries = []
     for path in sorted((root / HISTORY).glob('*/*.json')):
         entry = validate(json.loads(path.read_text()))
-        if path.relative_to(root) != HISTORY / entry['module'] / (entry['version'] + '.json'):
+        if path.relative_to(root) != HISTORY / entry['module'] / (route_version(entry) + '.json'):
             raise ValueError('Archive filename identity conflict')
         entries.append(entry)
     return sorted(entries, key=lambda e: (e['module'], import_docs._version(e['version'])))
 
 
 def verify(root):
-    entries = {(e['module'], e['version']): e for e in load_catalog(root)}
+    entries = {(e['module'], route_version(e)): e for e in load_catalog(root)}
     for record in latest_records(root):
         target = _record(record)
-        entry = entries.get((record['module'], record['version']))
+        entry = entries.get((record['module'], archive_path(record).stem))
         if not entry or entry['destinations'].get(target) != record:
             raise ValueError('Latest confirmation missing from archive; run documentation_history.py seed')
 
@@ -123,7 +134,7 @@ def main():
         seed(ROOT)
     verify(ROOT)
     if args.command == 'export':
-        print(json.dumps([{**e, 'installation': {lang: installation(e, lang) for lang in ('en', 'es')}} for e in load_catalog(ROOT)]))
+        print(json.dumps([{**e, 'route_version': route_version(e), 'installation': {lang: installation(e, lang) for lang in ('en', 'es')}} for e in load_catalog(ROOT)]))
 
 
 if __name__ == '__main__':

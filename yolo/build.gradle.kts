@@ -8,6 +8,7 @@ plugins {
     id("com.vanniktech.maven.publish")
 }
 
+val jitpackTagSuffix = if (providers.gradleProperty("jitpackScopedTag").orNull == "true") "-jitpack" else ""
 val jitpackBuild = providers.gradleProperty("jitpackBuild").orElse("false").map { it.toBoolean() }
 val publicationProperties = Properties().apply {
     rootProject.layout.projectDirectory.file("gradle.properties").asFile.inputStream().use { load(it) }
@@ -79,7 +80,7 @@ mavenPublishing {
     coordinates(
         if (jitpackBuild.get()) "com.github.lambdawalker" else publicationGroup,
         if (jitpackBuild.get()) "android.apexfission.yolo" else publicationArtifact,
-        if (jitpackBuild.get()) "yolo~v${project.version}" else project.version.toString(),
+        if (jitpackBuild.get()) "yolo~v${project.version}$jitpackTagSuffix" else project.version.toString(),
     )
     configure(AndroidSingleVariantLibrary(variant = "release", javadocJar = JavadocJar.Empty(), sourcesJar = SourcesJar.Sources()))
     if (!jitpackBuild.get()) publishToMavenCentral()
