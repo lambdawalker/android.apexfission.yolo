@@ -1,6 +1,6 @@
 # Release operations
 
-The shared `android-repo-setup` CLI and Gradle plugin own release operations. Both are pinned to v0.1.20. The `yolo` module publishes; `app` never publishes. Central coordinates remain `com.apexfission.android:yolo`; JitPack uses `com.github.lambdawalker:android.apexfission.yolo:yolo~vX.Y.Z-jitpack` after provider confirmation.
+The shared `android-repo-setup` CLI and Gradle plugin own release operations. The CLI is pinned to corrective source commit `1da53392b262c7c3129d2bd645dfd7b34ead81e1`; the Gradle plugin remains pinned to v0.1.20. The `yolo` module publishes; `app` never publishes. Central coordinates remain `com.apexfission.android:yolo`; JitPack uses `com.github.lambdawalker:android.apexfission.yolo:yolo~vX.Y.Z-jitpack` after provider confirmation.
 
 ## Configuration and checks
 

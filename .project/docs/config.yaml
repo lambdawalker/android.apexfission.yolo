@@ -3,7 +3,7 @@ repository: lambdawalker/android.apexfission.yolo
 title: Apexfission YOLO
 modules:
   yolo: YOLO
-tooling_ref: v0.1.20
+tooling_ref: 1da53392b262c7c3129d2bd645dfd7b34ead81e1
 sources:
   roots:
   - yolo/src/main/java
@@ -23,15 +23,8 @@ sources:
     start: '<!-- example: postprocess -->'
     end: '<!-- end-example: postprocess -->'
 site:
-  build:
-  - npm
-  - --prefix
-  - sites
-  - run
-  - check
-  serve:
-  - npm
-  - --prefix
-  - sites
-  - run
-  - dev
+  backend: astro
+  base_url: https://lambdawalker.github.io/android.apexfission.yolo/
+  pages:
+    docs/maintenance.md: development
+    docs/coverage.md: coverage

@@ -31,13 +31,13 @@ jobs:
       - id: source
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Install pinned documentation tooling
-        run: cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git --tag v0.1.20 android-repo-docs
+        run: cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git --rev 1da53392b262c7c3129d2bd645dfd7b34ead81e1 android-repo-docs
       - run: android-repo-docs check
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
           package-manager-cache: false
-      - run: "npm --prefix sites ci && android-repo-docs build --check"
+      - run: "android-repo-docs build --check && node --test sites/tests/*.test.mjs"
       - run: "android-repo-docs check"
       - uses: actions/upload-pages-artifact@v5
         with:

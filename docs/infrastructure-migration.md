@@ -1,6 +1,6 @@
 # Shared release infrastructure migration
 
-Use setup CLI and Gradle plugin v0.1.20. The plugin owns publication configuration and guards; the CLI owns bootstrap, workflow generation, journals, confirmation and finalization. android-repo-docs continues to own documentation data and invoke the existing Astro renderer.
+Use the setup CLI source pin recorded in `.project/setup/config.yaml`; the Gradle plugin remains at v0.1.20. The plugin owns publication configuration and guards; the CLI owns bootstrap, workflow generation, journals, confirmation and finalization. android-repo-docs owns documentation data and the shared Astro rendering pipeline.
 
 The migration removes the local Python release engines and their duplicated tests. Confirmed records, historical tags, public coordinates, runtime source and toolchain versions are preserved. The root project name now matches the repository so JitPack coordinates remain unchanged.
 
