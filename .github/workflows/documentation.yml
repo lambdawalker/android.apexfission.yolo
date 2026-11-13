@@ -29,7 +29,7 @@ jobs:
           cache-dependency-path: sites/package-lock.json
       - uses: dtolnay/rust-toolchain@stable
       - name: Install pinned documentation tool
-        run: cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git --tag v0.1.16 android-repo-docs
+        run: cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git --tag v0.1.20 android-repo-docs
       - run: npm --prefix sites ci && android-repo-docs build --check
         env:
           DOCS_REF: ${{ steps.source.outputs.sha }}
