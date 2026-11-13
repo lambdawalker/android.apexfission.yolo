@@ -1,0 +1,37 @@
+schema: 1
+repository: lambdawalker/android.apexfission.yolo
+title: Apexfission YOLO
+modules:
+  yolo: YOLO
+tooling_ref: 8e7d731e798ff9defcd71b2b146958e0ab3e146a
+sources:
+  roots:
+  - yolo/src/main/java
+  manifest: docs/api-excerpts.json
+  groups:
+  - include:
+    - '**/*.kt'
+    intro: .project/docs/introductions/api.md
+    output: docs/agents/source-reference.md
+  examples:
+  - source: app/src/main/java/com/apexfission/android/yolo/demo/DocumentationQuickstart.kt
+    target: docs/agents/quickstart.md
+    start: '<!-- example: quickstart -->'
+    end: '<!-- end-example: quickstart -->'
+  - source: app/src/main/java/com/apexfission/android/yolo/demo/DemoExamples.kt
+    target: docs/agents/recipes.md
+    start: '<!-- example: postprocess -->'
+    end: '<!-- end-example: postprocess -->'
+site:
+  build:
+  - npm
+  - --prefix
+  - sites
+  - run
+  - check
+  serve:
+  - npm
+  - --prefix
+  - sites
+  - run
+  - dev

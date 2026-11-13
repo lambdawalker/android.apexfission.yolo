@@ -4,8 +4,8 @@ import {dirname} from 'node:path';
 import {readRevision,readTranslationTree,readWorkingDocs,translatedGuide,rewriteVersioned,stableAnchors,guideSlug,scopePath} from './versioned.mjs';
 import {base,repository} from './markdown.mjs';
 
-export async function buildVersioned(root) {
- const catalog=JSON.parse(execFileSync('python3',['scripts/documentation_history.py','export'],{cwd:root,encoding:'utf8',maxBuffer:16*1024*1024})).map(entry=>({...entry,version:entry.route_version ?? entry.version}));
+export async function buildVersioned(root, records=JSON.parse(execFileSync('android-repo-docs',['history','export'],{cwd:root,encoding:'utf8',maxBuffer:16*1024*1024}))) {
+ const catalog=records.map(entry=>({...entry,version:entry.route_version ?? entry.version}));
  const put=async(path,text)=>{await mkdir(dirname(path),{recursive:true});await writeFile(path,text);};
  const snapshots=new Map(),scopes=[];
  const working=readWorkingDocs(root);

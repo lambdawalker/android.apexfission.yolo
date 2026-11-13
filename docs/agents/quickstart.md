@@ -17,7 +17,6 @@ longest edge to 1600 pixels. See the [model contract](model-contract.md).
 4. Use this complete helper from the demo module; it borrows your bitmap and returns source-pixel detections:
 
 <!-- example: quickstart -->
-
 ```kotlin
 package com.apexfission.android.yolo.demo
 
@@ -36,7 +35,6 @@ fun detectImage(context: Context, bitmap: Bitmap, modelAssetPath: String): List<
         useGpu = false,
     ).use { detector -> detector.detect(bitmap) }
 ```
-
 <!-- end-example: quickstart -->
 
 The helper is compiled as part of `:app:assembleDebug`. Call it from a worker executor or

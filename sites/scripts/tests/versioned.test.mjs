@@ -90,10 +90,10 @@ test('complete archived guide rendering retains dotted versions and exact instal
   writeFileSync(join(root,'docs/agents/api.md'),'# Old API\n\n## Contract\n\nOld contract.\n');
   git('add','.');git('commit','-qm','confirmed test source');const ref=git('rev-parse','HEAD');
   const record={module:'yolo',version:'1.2.3',source:ref,documentation_ref:ref,destinations:{central:{}},installation:{en:'# Installation\n\n`example:yolo:1.2.3`\n',es:'# Instalación\n\n`example:yolo:1.2.3`\n'}};
-  writeFileSync(join(root,'scripts/documentation_history.py'),'print('+JSON.stringify(JSON.stringify([record, {...record, route_version:'1.2.3-jitpack', destinations:{jitpack:{}}}]))+')\n');
+  const records=[record, {...record, route_version:'1.2.3-jitpack', destinations:{jitpack:{}}}];
   writeFileSync(join(root,'docs/agents/api.md'),'# New API\n\n## Contract\n\nNew development contract.\n');
   process.chdir(join(root,'sites'));process.env.DOCS_REF=ref;
-  await buildVersioned(root);
+  await buildVersioned(root,records);
   const old=readFileSync('public/es/yolo/1.2.3/raw/api.md','utf8');
   assert.match(old,/Old contract/);assert.doesNotMatch(old,/New development/);assert.match(old,/Traducción pendiente/);
   assert.match(readFileSync('src/content/docs/en/yolo/1.2.3/api.md','utf8'),/slug: "en\/yolo\/1\.2\.3\/api"/);

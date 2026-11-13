@@ -26,7 +26,6 @@ Do not substitute an arbitrary executor/coroutine dispatcher: physical-thread af
 The complete synthetic example compiled in the app is:
 
 <!-- example: postprocess -->
-
 ```kotlin
 package com.apexfission.android.yolo.demo
 
@@ -62,7 +61,6 @@ object DemoExamples {
     )
 }
 ```
-
 <!-- end-example: postprocess -->
 
 Three candidates become two detections: the overlapping lower-score candidate is suppressed.
