@@ -1,20 +1,13 @@
-import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
-import com.vanniktech.maven.publish.JavadocJar
-import com.vanniktech.maven.publish.SourcesJar
 import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.library)
-    id("com.vanniktech.maven.publish")
+    id("com.apexfission.android-repo-setup")
 }
 
-val jitpackTagSuffix = if (providers.gradleProperty("jitpackScopedTag").orNull == "true") "-jitpack" else ""
-val jitpackBuild = providers.gradleProperty("jitpackBuild").orElse("false").map { it.toBoolean() }
 val publicationProperties = Properties().apply {
     rootProject.layout.projectDirectory.file("gradle.properties").asFile.inputStream().use { load(it) }
 }
-val publicationGroup = publicationProperties.getProperty("GROUP")
-val publicationArtifact = publicationProperties.getProperty("POM_ARTIFACT_ID")
 val projectUrl = "https://github.com/lambdawalker/android.apexfission.yolo"
 
 
@@ -76,16 +69,6 @@ dependencies {
 }
 
 mavenPublishing {
-    // Set coordinates before creating publications, which finalizes these values.
-    coordinates(
-        if (jitpackBuild.get()) "com.github.lambdawalker" else publicationGroup,
-        if (jitpackBuild.get()) "android.apexfission.yolo" else publicationArtifact,
-        if (jitpackBuild.get()) "yolo~v${project.version}$jitpackTagSuffix" else project.version.toString(),
-    )
-    configure(AndroidSingleVariantLibrary(variant = "release", javadocJar = JavadocJar.Empty(), sourcesJar = SourcesJar.Sources()))
-    if (!jitpackBuild.get()) publishToMavenCentral()
-    // Ordinary builds and the local verification repository never need secrets.
-    if (!jitpackBuild.get() && providers.gradleProperty("signingInMemoryKey").isPresent) signAllPublications()
     pom {
         name.set("Apexfission YOLO")
         description.set("Android YOLO detection with LiteRT inference, image preprocessing, and NMS post-processing.")
@@ -110,31 +93,5 @@ mavenPublishing {
             connection.set("scm:git:$projectUrl.git")
             developerConnection.set("scm:git:ssh://git@github.com/lambdawalker/android.apexfission.yolo.git")
         }
-    }
-}
-
-// Ship the maintained guides in the documentation classifier; do not pretend
-// that Java's javadoc tool generates an API reference for Kotlin sources.
-tasks.withType<com.vanniktech.maven.publish.tasks.JavadocJar>().configureEach {
-    from(rootProject.file("docs/agents")) { include("**/*.md"); into("docs") }
-    from(rootProject.file("LICENSE"))
-}
-tasks.withType<org.gradle.jvm.tasks.Jar>().configureEach {
-    isPreserveFileTimestamps = false
-    isReproducibleFileOrder = true
-}
-
-publishing {
-    repositories {
-        maven {
-            name = "verification"
-            url = rootProject.layout.buildDirectory.dir("verification-repository").get().asFile.toURI()
-        }
-    }
-}
-
-tasks.configureEach {
-    if (name.contains("MavenCentral", ignoreCase = true)) {
-        dependsOn(rootProject.tasks.named("verifyPublicationReservation"))
     }
 }
