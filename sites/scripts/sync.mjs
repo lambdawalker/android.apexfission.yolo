@@ -1,40 +1,15 @@
 import {readFile,writeFile,mkdir,rm,readdir} from 'node:fs/promises';
 import {resolve,dirname,relative,sep} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {createHash} from 'node:crypto';
 import {rewriteMarkdown,humanPages,base,repository} from './markdown.mjs';
 const root=resolve('..');
 process.env.DOCS_REF ||= execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
 if (!/^[a-f0-9]{40}$/.test(process.env.DOCS_REF)) throw new Error('DOCS_REF must be a full commit SHA');
-execFileSync('python3',['scripts/release.py','verify'],{cwd:root,stdio:'inherit'});
+execFileSync('android-repo-docs',['check'],{cwd:root,stdio:'inherit'});
 const read=async p=>(await readFile(resolve(root,p),'utf8')).replace(/\r\n/g,'\n');
 const portable=p=>p.split(sep).join('/');
 async function put(p,s){await mkdir(dirname(p),{recursive:true});await writeFile(p,s);}
 async function walk(dir){let result=[];for(const e of await readdir(dir,{withFileTypes:true})){const p=resolve(dir,e.name);result.push(...e.isDirectory()?await walk(p):[p]);}return result;}
-const manifest=JSON.parse(await read('docs/api-excerpts.json'));
-for(const item of manifest){
- const hash=createHash('sha256').update(await read(item.path)).digest('hex');
- if(hash!==item.sha256)throw new Error(`Review API and update manifest for ${item.path}`);
- await read(item.guide);
-}
-const internal=['image/LetterboxBuilder.kt','postprocess/YoloNms.kt','tflite/engine/InferenceCore.kt','tflite/validation/TfliteModelLoader.kt'];
-for(const path of await walk(resolve(root,'yolo/src/main/java/com/apexfission/android/yolo'))){
- if(!path.endsWith('.kt'))continue;
- const rel=portable(relative(root,path));
- if(!manifest.some(x=>x.path===rel)&&!internal.some(x=>rel.endsWith('/'+x)))throw new Error(`Classify new API source: ${rel}`);
-}
-const snippets={quickstart:'app/src/main/java/com/apexfission/android/yolo/demo/DocumentationQuickstart.kt',postprocess:'app/src/main/java/com/apexfission/android/yolo/demo/DemoExamples.kt'};
-async function expand(text){for(const [id,path] of Object.entries(snippets)){
- const start=`<!-- example: ${id} -->`,end=`<!-- end-example: ${id} -->`;
- if(!text.includes(start))continue;
- const replacement=start+'\n\n```kotlin\n'+(await read(path)).trim()+'\n```\n\n'+end;
- const a=text.indexOf(start),b=text.indexOf(end,a);
- text=text.slice(0,a)+replacement+text.slice(b<0?a+start.length:b+end.length);
-}return text;}
-for(const file of await walk(resolve(root,'docs/agents'))){if(!file.endsWith('.md'))continue;
- const old=await readFile(file,'utf8'),fresh=await expand(old);
- if(old!==fresh){if(process.argv.includes('--update-snippets'))await writeFile(file,fresh);else throw new Error(`Stale snippet in ${file}; run node scripts/sync.mjs --update-snippets and review`);}
-}
 await rm('dist',{recursive:true,force:true});
 await rm('public',{recursive:true,force:true});await mkdir('public/agents',{recursive:true});
 for(const entry of await readdir('src/content/docs'))if(entry!=='index.md')await rm(resolve('src/content/docs',entry),{recursive:true,force:true});

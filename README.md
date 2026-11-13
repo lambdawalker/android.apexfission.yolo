@@ -85,3 +85,20 @@ application. Close detectors and engines after use; see the runnable
 Extracted from `android.card_detection_lite` at commit
 `933b3263580b5d4831641aeaee5e2caa6477edc1`. Library source, tests, and keep rules
 remain intact under `yolo/`. Licensed under Apache 2.0; see [LICENSE](LICENSE).
+
+
+## Documentation tooling
+
+Documentation is maintained by the independently pinned `android-repo-docs` executable.
+Use `sh ./docs.sh check` on Linux/macOS or `docs.bat check` on Windows.
+The launcher installs the configured release or immutable source revision on first use;
+source pins require Rust and Git. No setup credentials are needed.
+
+- `sh ./docs.sh sources check` verifies reviewed Kotlin inputs and examples.
+- `sh ./docs.sh sources update` intentionally refreshes generated references and examples; review the diff.
+- `sh ./docs.sh build --check` builds the existing documentation site locally.
+- `sh ./docs.sh bootstrap check` verifies the launcher files against their independent pin.
+
+Configuration and project-specific introductory Markdown live in `.project/docs/`.
+Confirmed release records and archived source identities remain authoritative.
+Documentation checks do not accept images, publish artifacts, or deploy the site.

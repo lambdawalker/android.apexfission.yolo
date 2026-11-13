@@ -1,4 +1,6 @@
 # Public API retrieval map
+
+[Complete source declaration reference](source-reference.md) · Checked against the current library sources.
 Scope: main source. API pages contain declaration references with actual defaults and focused
 contracts. They omit bodies/annotations and are not standalone compilable Kotlin files.
 Source hashes in `docs/api-excerpts.json` fail builds when references need review.

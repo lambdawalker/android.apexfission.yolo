@@ -24,9 +24,7 @@ test('the release exporter renders both providers at the same version', async ()
         mkdirSync(join(root, 'docs/releases/jitpack'), {recursive: true});
         mkdirSync(join(root, 'sites'));
         mkdirSync(join(root, 'scripts'));
-        for (const file of ['documentation_history.py', 'import_docs.py', 'release_identity.py']) {
-            cpSync(join(repository, 'scripts', file), join(root, 'scripts', file));
-        }
+        cpSync(join(repository, '.project/docs'), join(root, '.project/docs'), {recursive: true});
         git('init', '-q');
         git('config', 'user.name', 'Test');
         git('config', 'user.email', 'test@example.invalid');
@@ -50,7 +48,7 @@ test('the release exporter renders both providers at the same version', async ()
         for (const [file, release] of [[`${moduleName}.json`, central], [`jitpack/${moduleName}.json`, jitpack]]) {
             writeFileSync(join(root, 'docs/releases', file), JSON.stringify(release));
         }
-        execFileSync('python3', ['scripts/documentation_history.py', 'seed'], {cwd: root});
+        execFileSync('android-repo-docs', ['history', 'seed'], {cwd: root});
         process.chdir(join(root, 'sites'));
         process.env.DOCS_REF = jitpack.source;
         await buildVersioned(root);

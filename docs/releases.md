@@ -76,7 +76,7 @@ python3 -m pip install -r scripts/requirements-publishing.txt
 python3 -m unittest discover -s scripts/tests -v
 python3 scripts/publishing_config.py check
 python3 scripts/module_release.py verify
-python3 scripts/documentation_history.py verify
+sh ./docs.sh history verify
 bash -n scripts/finalize-release.sh
 ./gradlew :yolo:testDebugUnitTest :yolo:publishAllPublicationsToVerificationRepository -PreleaseModule=yolo -PreleaseVersion=9.8.7
 RELEASE_REPOSITORY=jitpack ./gradlew :yolo:publishAllPublicationsToVerificationRepository -PjitpackBuild=true -PreleaseModule=yolo -PreleaseVersion=9.8.7

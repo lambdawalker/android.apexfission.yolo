@@ -86,3 +86,4 @@ sites/src/content/docs/*
 .cxx
 
 sites/src/versions.json
+/.project/docs/cache/

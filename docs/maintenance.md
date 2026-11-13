@@ -25,10 +25,15 @@ and validates local HTML/raw links, anchors, assets, and project-subpath URLs.
 External network availability is not a link-validation gate.
 
 After editing a compiled example, intentionally update its Markdown copy with
-`cd sites && node scripts/sync.mjs --update-snippets`, review the diff, and run `npm run check`.
-After a library source change, review all associated declarations/contracts and update the
-source hash in `docs/api-excerpts.json`; do not merely bless a hash without reviewing behavior.
-A new public file must be assigned a guide in that manifest (internal-only files are explicitly excluded).
+`sh ./docs.sh sources update` from the repository root, review the diff, and run
+`sh ./docs.sh build --check`.
+After a library source change, review the associated behavior, declarations, and contracts.
+Adjust the source group mappings in `.project/docs/config.yaml` when guide ownership changes,
+then run `sh ./docs.sh sources update` from the repository root. Review the generated source
+reference, example snippets, and `docs/api-excerpts.json` manifest together, then run
+`sh ./docs.sh check` and `sh ./docs.sh build --check`. The manifest is generated; do not edit
+its hashes or guide assignments by hand. Files without public excerpts remain inventoried
+with a null guide.
 
 To check stale-output removal, create a temporary file under `sites/public/agents/`, rerun
 `npm run sync`, and confirm it is removed. Keep source guides outside that generated directory.
@@ -74,7 +79,9 @@ Language and version selectors preserve the guide when available; otherwise the 
 explains the fallback. Legacy human and agent URLs remain supported as development aliases.
 
 `docs/releases/history/yolo/<version>.json` owns immutable release provenance and destination
-facts. `scripts/documentation_history.py export` supplies exact installation text to the site;
+facts. The site calls `android-repo-docs history export` directly for exact installation
+text; the launcher exposes that executable to child build commands. Run
+`sh ./docs.sh history export` for the same export from the repository root;
 old pages never read current installation pointers. Builders require full Git history, read
 historical Markdown as data, and execute only current reviewed build tooling. Release 0.1.0
 predates the guides: its recorded documentation correction uses the later documentation commit,
