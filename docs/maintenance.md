@@ -3,8 +3,8 @@
 - Library source and tests own runtime/API facts; `docs/api-excerpts.json` records reviewed source hashes.
 - `docs/release.json` owns confirmed publication facts; the shared CLI generates `IMPORT.md`.
 - `docs/agents/` owns integration contracts, complete examples, and API reference text.
-- `sites/src/content/docs/index.md` owns the human landing page. Build-time transformations turn
-  the integration guides into navigable human HTML and publish their canonical raw Markdown.
+- The shared `android-repo-docs` Astro backend owns the catalogs and turns integration guides
+  into navigable human HTML with scoped raw Markdown. Current trusted presentation and legacy aliases live in `sites/astro/`.
 - Compiled app source owns quickstart and synthetic snippets. Site output is generated and ignored.
 - No accepted screenshot set exists; see the explicit decision in the limitations guide.
 
@@ -14,13 +14,13 @@ sh ./setup.sh --version
 sh ./setup.sh module_release generate
 sh ./setup.sh module_release verify
 sh ./setup.sh workflows --check
-cd sites
-npm ci
-npm run check
-npm run dev
+sh ./docs.sh check
+sh ./docs.sh history verify
+sh ./docs.sh build --check
+node --test sites/tests/*.test.mjs
+sh ./docs.sh serve
 ```
-Node 24 is used in CI. `npm run check` tests Markdown transformation, verifies release values,
-checks reviewed API input hashes, extracts/synchronizes guides, builds Starlight and Pagefind,
+Node 24 is used in CI. The shared CLI checks reviewed source hashes and compiled snippets, builds Starlight and Pagefind,
 and validates local HTML/raw links, anchors, assets, and project-subpath URLs.
 External network availability is not a link-validation gate.
 
@@ -35,10 +35,8 @@ reference, example snippets, and `docs/api-excerpts.json` manifest together, the
 its hashes or guide assignments by hand. Files without public excerpts remain inventoried
 with a null guide.
 
-To check stale-output removal, create a temporary file under `sites/public/agents/`, rerun
-`npm run sync`, and confirm it is removed. Keep source guides outside that generated directory.
-`DOCS_REF` defaults to the checked-out commit; CI supplies the exact checkout SHA. Source links
-are pinned to it. Legacy URLs remain visibly main development docs even if installation metadata
+The shared build stages clean output before replacing `sites/dist/`. Keep source guides outside
+that generated directory. Development provenance uses the exact checked-out commit. Legacy URLs remain visibly main development docs even if installation metadata
 points to an older release. Versioned URLs identify their release source and documentation revision.
 
 ## Android checks
@@ -95,10 +93,10 @@ heading structure; the builder preserves English anchor aliases. Historical tran
 read only from their recorded documentation revision or retained translation tree, never from
 the current working translation. Add a translation correction explicitly through archive tooling.
 
-Run `npm run check` after editing guides, translations, navigation, or archive behavior. It retains
-the reviewed API hashes and compiled-snippet checks, tests immutable history and translation
-fallback, then validates HTML, raw Markdown, selector option destinations, and anchors. Generated
-scoped pages, `src/versions.json`, `public/`, and `dist/` must not be committed.
+Run `sh ./docs.sh check`, `sh ./docs.sh build --check` and `node --test sites/tests/*.test.mjs`
+after editing guides, translations, navigation or archive behavior. Shared frontend dependencies
+are pinned by the CLI, with no consumer npm installation. Do not commit `sites/dist/`. See
+`sites/README.md` for the reviewed CLI revision and archive-provenance acceptance checks.
 
 Successful trusted release workflow completions build current main with full history, covering
 publication and manual recovery even when a token-generated archive commit emits no push event.

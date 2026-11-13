@@ -1,6 +1,6 @@
 repository: lambdawalker/android.apexfission.yolo
 title: Apexfission YOLO
-tooling_ref: v0.1.20
+tooling_ref: '1da53392b262c7c3129d2bd645dfd7b34ead81e1'
 modules:
   yolo: YOLO
 android_modules:
@@ -32,7 +32,7 @@ workflows:
   app_module: app
   title: YOLO
   java_version: '21'
-  documentation_command: npm --prefix sites ci && android-repo-docs build --check
+  documentation_command: android-repo-docs build --check && node --test sites/tests/*.test.mjs
   screenshot_check_command: android-repo-docs check
   release_validation_command: android-repo-setup release-validate --source "$SOURCE_SHA"
 bootstrap:
