@@ -3,7 +3,7 @@ repository: lambdawalker/android.apexfission.yolo
 title: Apexfission YOLO
 modules:
   yolo: YOLO
-tooling_ref: 8e7d731e798ff9defcd71b2b146958e0ab3e146a
+tooling_ref: v0.1.16
 sources:
   roots:
   - yolo/src/main/java
