@@ -125,6 +125,11 @@ jobs:
         if: steps.release.outputs.skip != 'true'
         with:
           node-version: '24'
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.release.outputs.skip != 'true'
+      - name: Install pinned documentation tool
+        if: steps.release.outputs.skip != 'true'
+        run: cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git --rev 8e7d731e798ff9defcd71b2b146958e0ab3e146a android-repo-docs
       - name: Validate documentation at immutable release source
         if: steps.release.outputs.skip != 'true'
         working-directory: sites
