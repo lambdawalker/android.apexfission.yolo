@@ -1,48 +1,51 @@
 name: Documentation
 on:
-  pull_request:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
   workflow_run:
-    workflows: ['Finalize YOLO release', 'Publish YOLO library']
+    workflows: ["SUB - Finalize YOLO release","Publish yolo"]
     types: [completed]
 permissions:
   contents: read
+concurrency:
+  group: documentation-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: false
 jobs:
   build:
-    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository)
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-24.04
     outputs:
       source: ${{ steps.source.outputs.sha }}
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.sha }}
+          ref: ${{ github.event_name == 'pull_request' && github.ref || 'main' }}
           fetch-depth: 0
+          lfs: true
       - id: source
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-node@v6
+      - name: Install pinned documentation tooling
+        run: cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git --tag v0.1.20 android-repo-docs
+      - run: android-repo-docs check
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
-          cache: npm
-          cache-dependency-path: sites/package-lock.json
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Install pinned documentation tool
-        run: cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git --tag v0.1.20 android-repo-docs
-      - run: npm --prefix sites ci && android-repo-docs build --check
-        env:
-          DOCS_REF: ${{ steps.source.outputs.sha }}
+          package-manager-cache: false
+      - run: "npm --prefix sites ci && android-repo-docs build --check"
+      - run: "android-repo-docs check"
       - uses: actions/upload-pages-artifact@v5
         with:
           path: sites/dist
   deploy:
     needs: build
-    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_run')
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    concurrency:
-      group: yolo-documentation-pages
-      cancel-in-progress: false
     permissions:
       contents: read
       pages: write
@@ -51,16 +54,19 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Refuse obsolete deployment
-        id: current
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - id: current
         env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ needs.build.outputs.source }}
+          BUILT_SHA: ${{ needs.build.outputs.source }}
         run: |
-          latest=$(gh api "repos/${{ github.repository }}/git/ref/heads/main" --jq '.object.sha')
-          if [ "$latest" = "$SOURCE_SHA" ]; then echo "deploy=true" >> "$GITHUB_OUTPUT"; fi
-      - uses: actions/configure-pages@v6
-        if: steps.current.outputs.deploy == 'true'
+          latest=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ "$latest" = "$BUILT_SHA" ]; then
+            echo 'deploy=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'Main advanced; skip stale build. A newer run or manual dispatch will deploy.'
+          fi
       - uses: actions/deploy-pages@v5
-        if: steps.current.outputs.deploy == 'true'
         id: deployment
+        if: steps.current.outputs.deploy == 'true'

@@ -1,4 +1,4 @@
-name: Finalize YOLO release
+name: SUB - Finalize YOLO release
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ on:
         description: 'Module whose existing publication should be finalized'
         type: choice
         required: true
-        options: [yolo]
+        options: ["yolo"]
       version:
         description: 'Existing release X.Y.Z to verify and finalize. Never uploads artifacts.'
         required: true
@@ -54,15 +54,17 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: main
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.12'
-      - run: python3 -m pip install -r scripts/requirements-publishing.txt
-      - run: python3 scripts/publishing_config.py check
+      - name: Install pinned Rust tooling
+        env:
+          TOOLING_REF: 'v0.1.20'
+        run: |
+          if [[ "$TOOLING_REF" == v* ]]; then ref=(--tag "$TOOLING_REF"); else ref=(--rev "$TOOLING_REF"); fi
+          cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git "${ref[@]}" android-repo-setup
+      - run: android-repo-setup publishing_config check
       - id: repository
         env:
           RELEASE_REPOSITORY: ${{ inputs.repository }}
-        run: python3 scripts/publishing_config.py resolve
+        run: android-repo-setup publishing_config resolve
 
   finalize:
     needs: configuration
@@ -72,15 +74,11 @@ jobs:
     environment: ${{ needs.configuration.outputs.environment }}
     env:
       RELEASE_REPOSITORY: ${{ inputs.repository }}
-      MAVEN_REPOSITORY_URL: ${{ vars.MAVEN_REPOSITORY_URL || 'https://repo.maven.apache.org/maven2' }}
-      MAVEN_REPOSITORY_USERNAME: ${{ secrets.MAVEN_REPOSITORY_USERNAME }}
-      MAVEN_REPOSITORY_PASSWORD: ${{ secrets.MAVEN_REPOSITORY_PASSWORD }}
-      GIT_LFS_SKIP_SMUDGE: '1'
       RELEASE_MODULE: ${{ inputs.module }}
     # Same repository-wide lock as publishing. Never cancel an active upload/push.
     # The automatic environment delay is a separate job outside this lock.
     concurrency:
-      group: maven-central-yolo
+      group: android-repository-release
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
@@ -88,31 +86,45 @@ jobs:
           ref: main
           fetch-depth: 0
           lfs: false
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.12'
-      - run: python3 -m pip install -r scripts/requirements-publishing.txt
+      - name: Install pinned Rust tooling
+        env:
+          TOOLING_REF: 'v0.1.20'
+        run: |
+          if [[ "$TOOLING_REF" == v* ]]; then ref=(--tag "$TOOLING_REF"); else ref=(--rev "$TOOLING_REF"); fi
+          cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git "${ref[@]}" android-repo-setup
       - name: Recheck remote release state after acquiring the lock
         id: release
         env:
           RELEASE_VERSION: ${{ inputs.version }}
           EXPECTED_SOURCE: ${{ inputs.source }}
-        run: python3 scripts/module_release.py prepare-finalization --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$EXPECTED_SOURCE"
+        run: android-repo-setup module_release prepare-finalization --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$EXPECTED_SOURCE"
       - name: Confirm complete public artifact set (up to 40 minutes)
+        id: verify_public
         if: steps.release.outputs.skip != 'true'
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           SOURCE_SHA: ${{ steps.release.outputs.source }}
-        run: python3 scripts/module_release.py confirm --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$SOURCE_SHA" --timeout 2400
+        run: android-repo-setup module_release confirm --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$SOURCE_SHA" --timeout 2400
       - name: Atomically finalize docs, source tag, and attempt markers
         if: steps.release.outputs.skip != 'true'
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           SOURCE_SHA: ${{ steps.release.outputs.source }}
-        run: python3 scripts/module_release.py finalize --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$SOURCE_SHA"
+        run: android-repo-setup module_release finalize --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$SOURCE_SHA"
       - name: Recovery guidance
         if: failure()
+        env:
+          VERIFY_OUTCOME: ${{ steps.verify_public.outcome }}
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
-          echo 'Keep pending/uploading tags and inspect the original publish log and Central Portal.'
-          echo 'Run this workflow again with the same repository and version to verify/finalize without uploading.'
-          echo 'See docs/releases.md for partial publication or protected-branch outcomes.'
+          {
+            echo '### Release finalization recovery'
+            printf 'Destination: `%s` · Module: `%s` · Version: `%s`\n\n' "$RELEASE_REPOSITORY" "$RELEASE_MODULE" "$RELEASE_VERSION"
+            case "$VERIFY_OUTCOME" in
+              success) echo 'Public artifact verification passed. Check the documentation and release-marker update failure.' ;;
+              failure|cancelled) echo 'Public artifact verification did not complete. Check the publication status for this destination.' ;;
+              *) echo 'Public artifact verification did not start. Check the reservation and the first failed step.' ;;
+            esac
+            echo 'Run **SUB - Finalize YOLO release** again with the same destination and version. Finalization does not upload artifacts.'
+            echo 'Keep release markers until the outcome is known. See docs/releases.md.'
+          } >> "$GITHUB_STEP_SUMMARY"

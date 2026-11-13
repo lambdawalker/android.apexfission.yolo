@@ -4,7 +4,7 @@ Astro/Starlight, independent of Android runtime dependencies.
 From this `sites/` directory (Node 24 and Python 3.12):
 
 ```bash
-python3 -m pip install -r ../scripts/requirements-publishing.txt
+sh ../setup.sh --version
 npm ci
 npm run check
 npm run dev

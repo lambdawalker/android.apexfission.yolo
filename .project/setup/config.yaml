@@ -1,0 +1,39 @@
+repository: lambdawalker/android.apexfission.yolo
+title: Apexfission YOLO
+tooling_ref: v0.1.20
+modules:
+  yolo: YOLO
+android_modules:
+  yolo:
+    path: ':yolo'
+    directory: yolo
+    kind: library
+    selected: true
+    namespace: com.apexfission.android.yolo
+    screenshots: false
+  app:
+    path: ':app'
+    directory: app
+    kind: application
+    selected: true
+    namespace: com.apexfission.android.yolo.demo
+    application_ids: [com.apexfission.android.yolo.demo]
+    screenshots: false
+verification:
+  class_prefix: com/apexfission/android/yolo/
+  required_api_artifacts: [coordinates]
+  bytecode_major: 61
+  required_api_dependencies:
+    - group: com.apexfission.android.math
+      artifact: coordinates
+      version: 0.1.0
+workflows:
+  module: yolo
+  app_module: app
+  title: YOLO
+  java_version: '21'
+  documentation_command: npm --prefix sites ci && android-repo-docs build --check
+  screenshot_check_command: android-repo-docs check
+  release_validation_command: android-repo-setup release-validate --source "$SOURCE_SHA"
+bootstrap:
+  jitpack: true

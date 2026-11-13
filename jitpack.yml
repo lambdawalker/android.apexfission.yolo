@@ -1,10 +1,9 @@
-# JitPack selects one bootstrap JDK from this list, not a Java toolchain matrix.
 jdk:
-  - openjdk17
+- openjdk17
 before_install:
-  # Match gradle/gradle-daemon-jvm.properties without its remote Foojay fallback.
-  - sdk install java 21.0.10-tem
-  - sdk use java 21.0.10-tem
-  - java -version
+- sdk install java 21.0.10-tem
+- sdk use java 21.0.10-tem
+- java -version
 install:
-  - python3 scripts/jitpack_build.py
+- if ! command -v cargo >/dev/null 2>&1; then curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal; fi
+- if [ -f "$HOME/.cargo/env" ]; then . "$HOME/.cargo/env"; fi; ANDROID_REPO_SETUP_SOURCE=1 sh ./setup.sh jitpack-build

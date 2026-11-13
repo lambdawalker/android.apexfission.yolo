@@ -87,3 +87,6 @@ sites/src/content/docs/*
 
 sites/src/versions.json
 /.project/docs/cache/
+/.project/setup/cache/
+
+/.project/setup/workflow-generation.lock

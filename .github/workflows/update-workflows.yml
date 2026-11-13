@@ -1,0 +1,125 @@
+name: Update GitHub workflows
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Validated Rust tooling tag or full commit SHA
+        required: true
+        default: 'v0.1.20'
+      docs_version:
+        description: Documentation tool tag or full commit SHA (blank preserves current pin)
+        required: false
+        default: 'v0.1.20'
+permissions:
+  contents: read
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install validated Rust tooling
+        env:
+          TOOLING_REF: ${{ inputs.version }}
+        run: |
+          if [[ "$TOOLING_REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            ref=(--tag "$TOOLING_REF")
+          elif [[ "$TOOLING_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            ref=(--rev "$TOOLING_REF")
+          else
+            echo "Expected a release tag or full commit SHA" >&2
+            exit 1
+          fi
+          cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git "${ref[@]}" android-repo-setup
+      - name: Update documentation tooling pin
+        env:
+          DOCS_TOOLING_REF: ${{ inputs.docs_version }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          pin = os.environ['DOCS_TOOLING_REF']
+          if not pin:
+              raise SystemExit(0)
+          if not re.fullmatch(r'(?:v[0-9]+\.[0-9]+\.[0-9]+|[0-9a-f]{40})', pin):
+              raise SystemExit('Expected a documentation release tag or full commit SHA')
+          path = Path('.project/docs/config.yaml')
+          pattern = r"^(tooling_ref|'tooling_ref'|\"tooling_ref\")([ \t]*:[ \t]*)([a-z0-9.]+|'[a-z0-9.]+'|\"[a-z0-9.]+\")([ \t]+#.*|[ \t]*)$"
+          text, count = re.subn(pattern, lambda match: match[1] + match[2] + "'" + pin + "'" + match[4], path.read_text(), flags=re.M)
+          if count != 1:
+              raise SystemExit('Expected exactly one documentation tooling_ref')
+          path.write_text(text)
+          PY
+      - env:
+          TOOLING_REF: ${{ inputs.version }}
+        run: android-repo-setup workflows --overwrite --set-tooling-ref "$TOOLING_REF"
+      - run: |
+          if [[ -f .project/setup/repositories.yml ]]; then
+            android-repo-setup publishing_config generate
+          fi
+      - name: Refresh adopted bootstrap
+        run: |
+          if [[ -f .project/setup/bootstrap.ps1 ]]; then
+            android-repo-setup bootstrap generate --overwrite
+          fi
+      - name: Refresh adopted documentation bootstrap
+        run: |
+          if [[ -f .project/docs/bootstrap.ps1 ]]; then
+            pin=$(python3 - <<'PY'
+          import re
+          from pathlib import Path
+          pattern = r"^(?:tooling_ref|'tooling_ref'|\"tooling_ref\")[ \t]*:[ \t]*([a-z0-9.]+|'[a-z0-9.]+'|\"[a-z0-9.]+\")(?:[ \t]+#.*|[ \t]*)$"
+          pins = re.findall(pattern, Path('.project/docs/config.yaml').read_text(), flags=re.M)
+          if len(pins) != 1:
+              raise SystemExit('Expected exactly one documentation tooling_ref')
+          print(pins[0].strip("'\""))
+          PY
+            )
+            if [[ "$pin" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              ref=(--tag "$pin")
+            elif [[ "$pin" =~ ^[0-9a-f]{40}$ ]]; then
+              ref=(--rev "$pin")
+            else
+              echo "Expected a documentation release tag or full commit SHA" >&2
+              exit 1
+            fi
+            cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git "${ref[@]}" android-repo-docs
+            android-repo-docs bootstrap generate --overwrite
+          fi
+      - name: Create review patch
+        run: |
+          git add .project/setup/config.yaml .github/workflows .project/setup/workflow-generation.json
+          if [[ -f .project/setup/repositories.properties ]]; then
+            git add .project/setup/repositories.properties
+          fi
+          if [[ -f .project/setup/modules.properties ]]; then
+            git add .project/setup/modules.properties
+          fi
+          if [[ -f .project/setup/bootstrap.ps1 ]]; then
+            git add setup.sh setup.bat .project/setup/bootstrap.ps1 .gitignore
+            if [[ -f jitpack.yml ]]; then git add jitpack.yml; fi
+          fi
+          git add .project/docs/config.yaml
+          if [[ -f .project/docs/bootstrap.ps1 ]]; then
+            git add docs.sh docs.bat .project/docs/bootstrap.ps1 .gitignore
+          fi
+          git diff --cached --binary > workflow-update.patch
+      - uses: actions/upload-artifact@v6
+        with:
+          name: workflow-update
+          path: workflow-update.patch
+      - name: Open update pull request when credential is configured
+        env:
+          GH_TOKEN: ${{ secrets.WORKFLOW_UPDATE_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          UPDATE_BRANCH: tooling/workflows-${{ github.run_id }}
+        run: |
+          if [ -z "$GH_TOKEN" ] || git diff --cached --quiet; then exit 0; fi
+          gh auth setup-git
+          git config user.name github-actions
+          git config user.email github-actions@users.noreply.github.com
+          git checkout -b "$UPDATE_BRANCH"
+          git commit -m 'Update generated GitHub workflows'
+          git push origin "$UPDATE_BRANCH"
+          gh pr create --base main --head "$UPDATE_BRANCH" --title 'Update generated GitHub workflows' --body 'Generated with the selected validated tooling release. Review the workflow diff before merging.'

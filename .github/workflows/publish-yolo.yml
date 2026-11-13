@@ -1,4 +1,4 @@
-name: Publish YOLO library
+name: Publish yolo
 
 on:
   workflow_dispatch:
@@ -17,8 +17,8 @@ on:
         default: ''
         type: string
 
-      allow_pending_jitpack:
-        description: 'Bypass older pending JitPack attempts (requires an explicit newer version)'
+      bypass_version_verification:
+        description: 'Allow recovery override with an explicit newer version. Central skips the remote version listing. JitPack bypasses older pending attempts.'
         required: false
         default: false
         type: boolean
@@ -33,6 +33,6 @@ jobs:
     secrets: inherit
     with:
       repository: ${{ inputs.repository }}
-      module: yolo
+      module: 'yolo'
       version: ${{ inputs.version }}
-      allow_pending_jitpack: ${{ inputs.allow_pending_jitpack }}
+      bypass_version_verification: ${{ inputs.bypass_version_verification }}

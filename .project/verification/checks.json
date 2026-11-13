@@ -1,0 +1,29 @@
+{
+  "release_validation": [
+    [
+      "npm",
+      "--prefix",
+      "sites",
+      "ci"
+    ],
+    [
+      "android-repo-docs",
+      "build",
+      "--check"
+    ],
+    [
+      "env",
+      "-u",
+      "RELEASE_REPOSITORY",
+      "sh",
+      "./gradlew",
+      ":yolo:testDebugUnitTest",
+      ":yolo:lintRelease",
+      ":yolo:assembleRelease",
+      ":app:assembleDebug",
+      ":app:assembleDebugAndroidTest",
+      ":app:lintDebug",
+      "--no-daemon"
+    ]
+  ]
+}

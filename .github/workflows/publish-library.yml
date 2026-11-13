@@ -1,4 +1,4 @@
-name: Shared library publication
+name: SUB - Shared library publication
 
 on:
   workflow_call:
@@ -17,8 +17,8 @@ on:
         default: ''
         type: string
 
-      allow_pending_jitpack:
-        description: 'Bypass older pending JitPack attempts (requires an explicit newer version)'
+      bypass_version_verification:
+        description: 'Allow recovery override with an explicit newer version. Central skips the remote version listing. JitPack bypasses older pending attempts.'
         required: false
         default: false
         type: boolean
@@ -39,15 +39,18 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.12'
-      - run: python3 -m pip install -r scripts/requirements-publishing.txt
-      - run: python3 scripts/publishing_config.py check
+      - name: Install pinned Rust tooling
+        env:
+          TOOLING_REF: 'v0.1.20'
+        run: |
+          if [[ "$TOOLING_REF" == v* ]]; then ref=(--tag "$TOOLING_REF"); else ref=(--rev "$TOOLING_REF"); fi
+          cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git "${ref[@]}" android-repo-setup
+          cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git --tag v0.1.20 android-repo-docs
+      - run: android-repo-setup publishing_config check
       - id: repository
         env:
           RELEASE_REPOSITORY: ${{ inputs.repository }}
-        run: python3 scripts/publishing_config.py resolve
+        run: android-repo-setup publishing_config resolve
 
   jitpack:
     needs: configuration
@@ -57,7 +60,7 @@ jobs:
       environment: ${{ needs.configuration.outputs.environment }}
       module: ${{ inputs.module }}
       version: ${{ inputs.version }}
-      allow_pending_jitpack: ${{ inputs.allow_pending_jitpack }}
+      bypass_version_verification: ${{ inputs.bypass_version_verification }}
 
   publish:
     needs: configuration
@@ -68,12 +71,9 @@ jobs:
     env:
       RELEASE_REPOSITORY: ${{ inputs.repository }}
       RELEASE_PUBLISHER: ${{ needs.configuration.outputs.publisher }}
-      MAVEN_REPOSITORY_URL: ${{ vars.MAVEN_REPOSITORY_URL || 'https://repo.maven.apache.org/maven2' }}
-      MAVEN_REPOSITORY_USERNAME: ${{ secrets.MAVEN_REPOSITORY_USERNAME }}
-      MAVEN_REPOSITORY_PASSWORD: ${{ secrets.MAVEN_REPOSITORY_PASSWORD }}
     # Shared with automatic/manual finalization; the delay never holds this lock.
     concurrency:
-      group: maven-central-yolo
+      group: android-repository-release
       cancel-in-progress: false
     outputs:
       skip: ${{ steps.release.outputs.skip }}
@@ -84,11 +84,13 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-          lfs: false
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.12'
-      - run: python3 -m pip install -r scripts/requirements-publishing.txt
+      - name: Install pinned Rust tooling
+        env:
+          TOOLING_REF: 'v0.1.20'
+        run: |
+          if [[ "$TOOLING_REF" == v* ]]; then ref=(--tag "$TOOLING_REF"); else ref=(--rev "$TOOLING_REF"); fi
+          cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git "${ref[@]}" android-repo-setup
+          cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git --tag v0.1.20 android-repo-docs
       - name: Configure release identity
         run: |
           git config user.name 'github-actions[bot]'
@@ -98,13 +100,22 @@ jobs:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           SIGNING_IN_MEMORY_KEY: ${{ secrets.SIGNING_IN_MEMORY_KEY }}
-        run: python3 scripts/publishing_config.py preflight
-      - name: Choose release version
+        run: android-repo-setup publishing_config preflight
+      - name: Reconcile previous attempts and choose release version
         id: release
         env:
           RELEASE_MODULE: ${{ inputs.module }}
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           REQUESTED_VERSION: ${{ inputs.version }}
-        run: python3 scripts/module_release.py prepare --module "$RELEASE_MODULE" --version "$REQUESTED_VERSION"
+          BYPASS_VERSION_VERIFICATION: ${{ inputs.bypass_version_verification }}
+        shell: bash
+        run: |
+          args=()
+          if [[ "$BYPASS_VERSION_VERIFICATION" == true ]]; then
+            args+=(--skip-central-version-check)
+          fi
+          android-repo-setup module_release prepare --module "$RELEASE_MODULE" --version "$REQUESTED_VERSION" "${args[@]}"
       - name: Check out immutable artifact source
         if: steps.release.outputs.skip != 'true'
         env:
@@ -121,21 +132,22 @@ jobs:
         if: steps.release.outputs.skip != 'true'
         with:
           cache-disabled: true
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         if: steps.release.outputs.skip != 'true'
         with:
           node-version: '24'
-      - uses: dtolnay/rust-toolchain@stable
+          package-manager-cache: false
+      - name: Prepare immutable release assets
         if: steps.release.outputs.skip != 'true'
-      - name: Install pinned documentation tool
+        env:
+          RELEASE_MODULE: ${{ inputs.module }}
+          SOURCE_SHA: ${{ steps.release.outputs.source }}
+        run: android-repo-setup assets prepare --module "$RELEASE_MODULE" --source "$SOURCE_SHA"
+      - name: Validate immutable release source
         if: steps.release.outputs.skip != 'true'
-        run: cargo install --locked --git https://github.com/lambdawalker/gradle.android-repo-setup.git --tag v0.1.20 android-repo-docs
-      - name: Validate documentation at immutable release source
-        if: steps.release.outputs.skip != 'true'
-        working-directory: sites
-        run: |
-          npm ci
-          npm run check
+        env:
+          SOURCE_SHA: ${{ steps.release.outputs.source }}
+        run: "android-repo-setup release-validate --source \"$SOURCE_SHA\""
       - name: Test and validate complete unsigned publication locally
         if: steps.release.outputs.skip != 'true'
         env:
@@ -143,25 +155,20 @@ jobs:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           SOURCE_SHA: ${{ steps.release.outputs.source }}
         run: |
-          env -u RELEASE_REPOSITORY -u MAVEN_REPOSITORY_URL -u MAVEN_REPOSITORY_USERNAME -u MAVEN_REPOSITORY_PASSWORD python3 -m unittest discover -s scripts/tests -v
-          bash -n scripts/finalize-release.sh
-          ./gradlew verifyImportDocs :yolo:testDebugUnitTest :yolo:lintRelease :yolo:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug ":$RELEASE_MODULE:publishAllPublicationsToVerificationRepository" "-PreleaseModule=$RELEASE_MODULE" "-PreleaseVersion=$RELEASE_VERSION" --no-daemon
-          python3 scripts/module_release.py check-local --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$SOURCE_SHA"
-      - name: Upload demo APK
-        if: steps.release.outputs.skip != 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: yolo-demo
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          env -u RELEASE_REPOSITORY -u MAVEN_REPOSITORY_URL -u MAVEN_REPOSITORY_USERNAME -u MAVEN_REPOSITORY_PASSWORD android-repo-setup publishing_config check
+          MODULE_PATH=$(android-repo-setup module-path "$RELEASE_MODULE")
+          ./gradlew verifyImportDocs "$MODULE_PATH:lintRelease" "$MODULE_PATH:assembleRelease" "$MODULE_PATH:publishAllPublicationsToVerificationRepository" "-PreleaseModule=$RELEASE_MODULE" "-PreleaseVersion=$RELEASE_VERSION" --no-daemon
+          android-repo-setup module_release check-local --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$SOURCE_SHA"
       - name: Reserve immutable version, source, and artifact hashes
+        id: reserve
         if: steps.release.outputs.skip != 'true'
         env:
           RELEASE_MODULE: ${{ inputs.module }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           SOURCE_SHA: ${{ steps.release.outputs.source }}
-        run: python3 scripts/module_release.py reserve --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$SOURCE_SHA"
+        run: android-repo-setup module_release reserve --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --source "$SOURCE_SHA"
       - name: Publish and release signed artifacts
+        id: upload
         if: steps.release.outputs.skip != 'true'
         timeout-minutes: 35
         env:
@@ -180,7 +187,8 @@ jobs:
             central) task=publishAndReleaseToMavenCentral ;;
             *) echo 'Unknown repository'; exit 1 ;;
           esac
-          ./gradlew ":$RELEASE_MODULE:$task" "-PreleaseModule=$RELEASE_MODULE" "-PreleaseVersion=$RELEASE_VERSION" --no-daemon --console=plain 2>&1 | tee "$RUNNER_TEMP/repository-publish.log"
+          MODULE_PATH=$(android-repo-setup module-path "$RELEASE_MODULE")
+          ./gradlew "$MODULE_PATH:$task" "-PreleaseModule=$RELEASE_MODULE" "-PreleaseVersion=$RELEASE_VERSION" --no-daemon --console=plain 2>&1 | tee "$RUNNER_TEMP/repository-publish.log" | android-repo-setup module_release track-central-upload --module "$RELEASE_MODULE" --version "$RELEASE_VERSION"
       - name: Retain deployment log
         if: always()
         uses: actions/upload-artifact@v7
@@ -189,12 +197,30 @@ jobs:
           path: ${{ runner.temp }}/repository-publish.log
           if-no-files-found: ignore
           retention-days: 30
+      - name: Reconcile unsuccessful release attempt
+        if: failure() && steps.reserve.outcome == 'success'
+        env:
+          RELEASE_MODULE: ${{ inputs.module }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+        run: android-repo-setup module_release reconcile --module "$RELEASE_MODULE" --version "$RELEASE_VERSION" --apply
       - name: Recovery guidance
         if: failure()
+        env:
+          UPLOAD_OUTCOME: ${{ steps.upload.outcome }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
-          echo 'Keep pending/uploading tags until the selected repository outcome is known.'
-          echo 'Run Finalize YOLO release manually with the same repository and reserved version; it never re-uploads.'
-          echo 'See docs/releases.md for rejected, unknown, partial, or protected-branch outcomes.'
+          {
+            echo '### Maven Central release recovery'
+            printf 'Destination: `%s` · Module: `%s` · Version: `%s`\n\n' "$RELEASE_REPOSITORY" "$RELEASE_MODULE" "${RELEASE_VERSION:-unresolved}"
+            case "$UPLOAD_OUTCOME" in
+              success) echo 'The upload step succeeded. Use **SUB - Finalize YOLO release** with the destination and version above.' ;;
+              failure|cancelled) echo 'The upload step ran and its result is uncertain. Inspect Central Portal. If the upload exists, use **SUB - Finalize YOLO release** with the destination and version above.' ;;
+              *) echo 'The upload step did not start. Fix the failed step and check for a reservation before retrying.' ;;
+            esac
+            echo 'Review the reconciliation report above. Verified failures are archived; published artifacts are finalized without upload. Active or uncertain attempts remain pending. The next run checks again. See docs/releases.md.'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   propagation-delay:
     name: Wait for Maven Central propagation (15 minutes)
@@ -216,7 +242,7 @@ jobs:
       ${{ !cancelled() && needs.publish.result == 'success' && needs.publish.outputs.skip != 'true' &&
           (needs.propagation-delay.result == 'success' ||
            needs.propagation-delay.result == 'skipped') }}
-    uses: ./.github/workflows/finalize-yolo.yml
+    uses: ./.github/workflows/finalize-release.yml
     secrets: inherit
     with:
       repository: ${{ inputs.repository }}

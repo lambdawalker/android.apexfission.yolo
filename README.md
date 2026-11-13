@@ -22,7 +22,7 @@ The published coordinates dependency is transitive; no sibling checkout is requi
 `yolo/` is the published library; `app/` is the runnable Compose demo. `docs/agents/` holds
 canonical English integration guides, `docs/es/` holds reviewed Spanish translations,
 `docs/releases/history/` preserves release installation records, and `sites/` builds
-the versioned human website and raw Markdown. `scripts/` maintains confirmed release metadata. Contributor instructions are in `AGENTS.md`.
+the versioned human website and raw Markdown. The shared Rust CLI maintains confirmed release metadata. Contributor instructions are in `AGENTS.md`.
 
 ## Run the demo
 
@@ -44,13 +44,13 @@ The model and demo are never included in the Maven AAR.
 ## Build and test
 
 Requires JDK 21 for the Gradle daemon, JDK 17 for compilation, Android SDK 37, and
-Python 3.12 with `scripts/requirements-publishing.txt` for release helper checks. No Git submodules are required.
+The pinned setup and documentation CLI launchers install their release binaries. No Git submodules are required.
 
 ```bash
-python3 -m pip install -r scripts/requirements-publishing.txt
+sh ./setup.sh --version
 ./gradlew :yolo:testDebugUnitTest :yolo:lintRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
 ./gradlew :yolo:assembleRelease
-python3 -m unittest discover -s scripts/tests -v
+sh ./setup.sh workflows --check
 ```
 
 On Windows use `gradlew.bat`. The library AAR is in `yolo/build/outputs/aar/` and the

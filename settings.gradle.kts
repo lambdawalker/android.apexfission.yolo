@@ -1,4 +1,11 @@
 pluginManagement {
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id in setOf("com.apexfission.android-repo-setup.root", "com.apexfission.android-repo-setup")) {
+                useModule("com.github.lambdawalker:gradle.android-repo-setup:${requested.version}")
+            }
+        }
+    }
     repositories {
         google {
             content {
@@ -9,6 +16,7 @@ pluginManagement {
         }
         mavenCentral()
         gradlePluginPortal()
+        maven("https://jitpack.io")
     }
 }
 
@@ -20,6 +28,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "yolo"
+rootProject.name = "android.apexfission.yolo"
 
 include(":app", ":yolo")

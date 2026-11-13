@@ -1,7 +1,7 @@
 # Maintain the documentation
 ## Ownership and scope
 - Library source and tests own runtime/API facts; `docs/api-excerpts.json` records reviewed source hashes.
-- `docs/release.json` owns confirmed publication facts; existing release scripts generate `IMPORT.md`.
+- `docs/release.json` owns confirmed publication facts; the shared CLI generates `IMPORT.md`.
 - `docs/agents/` owns integration contracts, complete examples, and API reference text.
 - `sites/src/content/docs/index.md` owns the human landing page. Build-time transformations turn
   the integration guides into navigable human HTML and publish their canonical raw Markdown.
@@ -10,10 +10,10 @@
 
 ## Commands
 ```bash
-python3 -m pip install -r scripts/requirements-publishing.txt
-python3 scripts/release.py generate
-python3 scripts/release.py verify
-python3 -m unittest discover -s scripts/tests -v
+sh ./setup.sh --version
+sh ./setup.sh module_release generate
+sh ./setup.sh module_release verify
+sh ./setup.sh workflows --check
 cd sites
 npm ci
 npm run check
